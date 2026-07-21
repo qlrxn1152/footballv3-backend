@@ -12,6 +12,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,7 @@ class AuthServiceImplTest {
 
     @Autowired private AuthService authService;
     @Autowired private MemberService memberService;
+    @Autowired private JwtDecoder jwtDecoder;
 
     @Test
     @DisplayName("로그인 성공")
@@ -35,10 +38,20 @@ class AuthServiceImplTest {
         // when
         LoginResponse response = authService.login(new LoginRequest("test", "1234"));
 
+        Jwt jwt = jwtDecoder.decode(response.getAccessToken());
+
         // then
         assertThat(response).isNotNull();
         assertThat(response.getMemberId()).isEqualTo(signupResponse.getMemberId());
         assertThat(response.getUsername()).isEqualTo("test");
+
+        assertThat(jwt.getSubject()).isEqualTo(response.getMemberId().toString());
+        assertThat(jwt.getClaimAsString("username")).isEqualTo("test");
+        assertThat(jwt.getClaimAsString("role")).isEqualTo("USER");
+        assertThat(jwt.getClaimAsString("iss")).isEqualTo("footballv3-test");
+
+        assertThat(jwt.getExpiresAt()).isNotNull();
+        assertThat(jwt.getExpiresAt()).isAfter(jwt.getIssuedAt());
     }
 
     @Test

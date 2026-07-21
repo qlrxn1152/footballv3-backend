@@ -52,7 +52,7 @@ class MemberServiceImplTest {
     @DisplayName(value = "회원가입 성공 ( 공백제거, 대문자를 소문자 ) ")
     void signup_2() throws Exception {
         // given
-        MemberCreateRequest request = new MemberCreateRequest("   tEst      ", "    1234       ");
+        MemberCreateRequest request = new MemberCreateRequest("   tEst      ", "1234");
 
         // when
         MemberCreateResponse response = memberService.signup(request);

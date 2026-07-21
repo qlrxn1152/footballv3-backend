@@ -3,6 +3,8 @@ package io.github.qlrxn1152.footballv3.auth.service.impl;
 import io.github.qlrxn1152.footballv3.auth.dto.request.LoginRequest;
 import io.github.qlrxn1152.footballv3.auth.dto.response.LoginResponse;
 import io.github.qlrxn1152.footballv3.auth.exception.exceptions.LoginException;
+import io.github.qlrxn1152.footballv3.auth.jwt.AccessToken;
+import io.github.qlrxn1152.footballv3.auth.jwt.JwtTokenProvider;
 import io.github.qlrxn1152.footballv3.auth.service.AuthService;
 import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.exception.exceptions.NotFoundMemberException;
@@ -22,6 +24,8 @@ public class AuthServiceImpl implements AuthService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
 
+    private final JwtTokenProvider jwtTokenProvider;
+
     @Override
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
@@ -35,7 +39,9 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 로그인 시킴 -> 서버가, 유저에게 JWT 토큰을 발급한다.
-        return LoginResponse.of(member);
+        AccessToken accessToken = jwtTokenProvider.createAccessToken(member);
+
+        return LoginResponse.of(member, accessToken);
     }
 
 }
