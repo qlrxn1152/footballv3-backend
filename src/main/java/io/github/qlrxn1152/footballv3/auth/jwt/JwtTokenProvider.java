@@ -35,7 +35,7 @@ public class JwtTokenProvider {
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(jwtProperties.getIssuer())
-                .subject(member.getId().toString())
+                .subject(member.getId().toString()) // => 어떤 멤버인지
                 .issuedAt(issuedAt)
                 .expiresAt(expiresAt)
                 .claim("username", member.getUsername())
