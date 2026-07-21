@@ -28,10 +28,9 @@ public class MemberServiceImpl implements MemberService {
     @Override
     public MemberCreateResponse signup(MemberCreateRequest request) {
         String normalizedUsername = request.getUsername().toLowerCase().strip();
-        String normalizedPassword = request.getPassword().strip();
 
         memberValidation.validateDuplicateUsername(normalizedUsername);
-        String encodedPassword = passwordEncoder.encode(normalizedPassword);
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
 
         Member savedMember = memberRepository.save(Member.signup(normalizedUsername, encodedPassword));
         return MemberCreateResponse.of(savedMember);

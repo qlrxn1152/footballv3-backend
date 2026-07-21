@@ -9,11 +9,12 @@ import lombok.*;
 @AllArgsConstructor
 public class MemberCreateRequest {
 
-    @NotBlank
-    @Size(min = 4, max = 12)
+    @NotBlank(message = "아이디는 필수입니다.")
+    @Size(min = 4, max = 12, message = "아이디는 4~12 글자까지만 가능합니다.")
     private String username;
 
-    @Size(min = 4, max = 15)
+    @NotBlank(message = "비밀번호는 필수입니다.")
+    @Size(min = 4, max = 15, message = "비밀번호는 4~15 글자까지만 가능합니다.")
     private String password;
 
 
