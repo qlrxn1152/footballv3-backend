@@ -2,6 +2,7 @@ package io.github.qlrxn1152.footballv3.team.controller;
 
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,9 +11,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -27,4 +31,13 @@ public class TeamController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @GetMapping("/api/teams")
+    public ResponseEntity<List<TeamListResponse>> getTeams() {
+        List<TeamListResponse> response = teamService.getTeams();
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+
 }

@@ -5,6 +5,7 @@ import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.DuplicateTeamNameException;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.TeamNameLengthException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
@@ -18,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Slf4j
@@ -45,6 +48,14 @@ public class TeamServiceImpl implements TeamService {
         TeamMember savedTeamMember = teamMemberRepository.save(TeamMember.createTeam(savedTeam, member));
 
         return TeamCreateResponse.of(savedTeam, savedTeamMember.getRole());
+    }
+
+    @Override
+    public List<TeamListResponse> getTeams() {
+        return teamRepository.findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(TeamListResponse::of)
+                .toList();
     }
 
 

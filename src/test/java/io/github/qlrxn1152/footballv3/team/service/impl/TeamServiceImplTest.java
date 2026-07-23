@@ -8,6 +8,7 @@ import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.domain.TeamRole;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.DuplicateTeamNameException;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.TeamNameLengthException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
@@ -22,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -133,6 +136,33 @@ class TeamServiceImplTest {
         assertThatThrownBy(() -> teamService.createTeam(new TeamCreateRequest("aasdfasgdasdrfasdg"), memberResponse.getMemberId()))
                 .isInstanceOf(TeamNameLengthException.class)
                 .hasMessage("팀 이름은 2~10글자까지만 가능합니다.");
+    }
+
+    @Test
+    @DisplayName(value = "팀 전체조회")
+    void findTeams() throws Exception {
+        // given
+        MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("userA", "1234"));
+        MemberCreateResponse memberB = memberService.signup(new MemberCreateRequest("userB", "1234"));
+        teamService.createTeam(new TeamCreateRequest("teamA"), memberA.getMemberId());
+        teamService.createTeam(new TeamCreateRequest("teamB"), memberB.getMemberId());
+
+        // when
+        List<TeamListResponse> response = teamService.getTeams();
+
+        // then
+        assertThat(response).hasSize(2);
+        assertThat(response).extracting(TeamListResponse::getTeamName).containsExactly("teamB", "teamA");
+    }
+
+    @Test
+    @DisplayName(value = "팀 전체조회_팀 존재 안함")
+    void findTeams_empty() throws Exception {
+        // when
+        List<TeamListResponse> response = teamService.getTeams();
+
+        // then
+        assertThat(response).isEmpty();
     }
 
 
