@@ -9,6 +9,7 @@ import io.github.qlrxn1152.footballv3.team.domain.TeamRole;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.DuplicateTeamNameException;
+import io.github.qlrxn1152.footballv3.team.exception.exceptions.TeamNameLengthException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
@@ -108,6 +109,30 @@ class TeamServiceImplTest {
         assertThatThrownBy(() -> teamService.createTeam(new TeamCreateRequest("teamA"), memberResponseB.getMemberId()))
                 .isInstanceOf(DuplicateTeamNameException.class)
                 .hasMessage("팀 이름 중복");
+    }
+
+    @Test
+    @DisplayName(value = "팀 생성 실패_팀 이름 길이 미충족(부족)")
+    void createTeam_fail_teamNameLength() throws Exception {
+        // given
+        MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
+
+        // when && then
+        assertThatThrownBy(() -> teamService.createTeam(new TeamCreateRequest("a"), memberResponse.getMemberId()))
+                .isInstanceOf(TeamNameLengthException.class)
+                .hasMessage("팀 이름은 2~10글자까지만 가능합니다.");
+    }
+
+    @Test
+    @DisplayName(value = "팀 생성 실패_팀 이름 길이 미충족(넘음)")
+    void createTeam_fail_teamNameLength2() throws Exception {
+        // given
+        MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
+
+        // when && then
+        assertThatThrownBy(() -> teamService.createTeam(new TeamCreateRequest("aasdfasgdasdrfasdg"), memberResponse.getMemberId()))
+                .isInstanceOf(TeamNameLengthException.class)
+                .hasMessage("팀 이름은 2~10글자까지만 가능합니다.");
     }
 
 
