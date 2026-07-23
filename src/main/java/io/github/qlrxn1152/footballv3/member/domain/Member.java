@@ -35,7 +35,7 @@ public class Member {
     @Column(name = "member_total_goal_count")
     private int totalGoalCount;
 
-    @Column(name = "joined_at")
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     private Member(String username, String password) {
