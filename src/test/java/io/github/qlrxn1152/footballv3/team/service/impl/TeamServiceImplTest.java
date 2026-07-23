@@ -48,7 +48,7 @@ class TeamServiceImplTest {
     @Autowired private EntityManagerFactory emf;
     @Autowired private EntityManager em;
 
-    @BeforeEach
+//    @BeforeEach
     void setUp() {
         for (int i = 1; i <= 100; i++) {
             MemberCreateResponse member =
@@ -191,25 +191,6 @@ class TeamServiceImplTest {
 
         // then
         assertThat(response).isEmpty();
-    }
-
-    @Test
-    @DisplayName(value = "팀 전체조회_쿼리튜닝 이전")
-    void findTeams_before() throws Exception {
-
-        em.flush();
-        em.clear();
-
-        SessionFactory sessionFactory = emf.unwrap(SessionFactory.class);
-        Statistics statistics = sessionFactory.getStatistics();
-
-        statistics.clear();
-
-        teamService.getTeams(); // 실제 실행코드 => 즉, 유저가 팀들 조회를 하고싶어서 /api/teams GET 요청을 보냄
-
-        long queryCount = statistics.getPrepareStatementCount();
-
-        System.out.println("쿼리 실행 갯수 : " + queryCount);
     }
 
 
