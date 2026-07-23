@@ -5,7 +5,9 @@ import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamDetailResponse;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamMemberResponse;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.DuplicateTeamNameException;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.TeamNameLengthException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
@@ -51,11 +53,25 @@ public class TeamServiceImpl implements TeamService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TeamListResponse> getTeams() {
         return teamRepository.findAllByOrderByCreatedAtDesc()
                 .stream()
                 .map(TeamListResponse::of)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TeamDetailResponse getTeam(Long teamId) {
+        Team team = teamValidator.validateExistTeamAndReturn(teamId);
+
+        List<TeamMemberResponse> members = teamMemberRepository.findAllByTeamId(teamId)
+                .stream()
+                .map(TeamMemberResponse::of)
+                .toList();
+
+        return TeamDetailResponse.of(team, members);
     }
 
 

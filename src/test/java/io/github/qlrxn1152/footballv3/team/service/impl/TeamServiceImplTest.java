@@ -1,15 +1,19 @@
 package io.github.qlrxn1152.footballv3.team.service.impl;
 
 import io.github.qlrxn1152.footballv3.auth.service.AuthService;
+import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.dto.request.MemberCreateRequest;
 import io.github.qlrxn1152.footballv3.member.dto.response.MemberCreateResponse;
+import io.github.qlrxn1152.footballv3.member.repository.MemberRepository;
 import io.github.qlrxn1152.footballv3.member.service.MemberService;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.domain.TeamRole;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamDetailResponse;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.DuplicateTeamNameException;
+import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotFoundTeamException;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.TeamNameLengthException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
@@ -44,6 +48,7 @@ class TeamServiceImplTest {
 
     @Autowired private TeamRepository teamRepository;
     @Autowired private TeamMemberRepository teamMemberRepository;
+    @Autowired private MemberRepository  memberRepository;
 
     @Autowired private EntityManagerFactory emf;
     @Autowired private EntityManager em;
@@ -191,6 +196,91 @@ class TeamServiceImplTest {
 
         // then
         assertThat(response).isEmpty();
+    }
+
+    @Test
+    @DisplayName(value = "팀 상세 조회")
+    void getTeam() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("userA", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        // when
+        TeamDetailResponse response = teamService.getTeam(team.getTeamId());
+
+        // then
+        assertThat(response.getTeamId()).isEqualTo(team.getTeamId());
+        assertThat(response.getTeamName()).isEqualTo("teamA");
+        assertThat(response.getLeaderMemberId()).isEqualTo(leader.getMemberId());
+        assertThat(response.getMemberCount()).isEqualTo(1);
+        assertThat(response.getMembers()).hasSize(1);
+        assertThat(response.getMembers().get(0).getTeamRole()).isEqualTo(TeamRole.LEADER);
+    }
+
+    @Test
+    @DisplayName(value = "팀 상세 조회_멤버많음")
+    void getTeam2() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("userA", "1234"));
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("userB", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        // when
+
+        Team savedTeam = teamRepository.findById(team.getTeamId()).get();
+        Member savedMember = memberRepository.findById(member.getMemberId()).get();
+
+        teamMemberRepository.save(TeamMember.joinTeam(savedTeam, savedMember));
+
+        TeamDetailResponse response = teamService.getTeam(team.getTeamId());
+
+        // then
+        assertThat(response.getTeamId()).isEqualTo(team.getTeamId());
+        assertThat(response.getTeamName()).isEqualTo("teamA");
+        assertThat(response.getLeaderMemberId()).isEqualTo(leader.getMemberId());
+        assertThat(response.getMemberCount()).isEqualTo(2);
+        assertThat(response.getMembers()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName(value = "팀 상세 조회실패 _ 팀존재안함")
+    void getTeam_fail_notFoundTeam() throws Exception {
+        // when && then
+
+        assertThatThrownBy(() -> teamService.getTeam(999L))
+                .isInstanceOf(NotFoundTeamException.class)
+                .hasMessage("팀 조회 실패");
+    }
+
+
+    @Test
+    @DisplayName(value = "팀 상세 조회 쿼리 수 체크")
+    void getTeam_check_query_count() throws Exception {
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("userA", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        em.flush();
+        em.clear();
+
+        SessionFactory sessionFactory =
+                emf.unwrap(
+                        SessionFactory.class
+                );
+
+        Statistics statistics =
+                sessionFactory.getStatistics();
+
+        statistics.clear();
+
+        teamService.getTeam(team.getTeamId());
+
+        long queryCount =
+                statistics.getPrepareStatementCount();
+
+        System.out.println(
+                "팀 상세 조회 쿼리 개수 : " + queryCount
+        );
+
+        assertThat(queryCount).isEqualTo(2);
     }
 
 

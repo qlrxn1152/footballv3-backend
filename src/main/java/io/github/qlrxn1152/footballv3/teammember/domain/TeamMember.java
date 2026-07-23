@@ -45,6 +45,9 @@ public class TeamMember {
 
 
 
+
+
+
     public static TeamMember createTeam(Team team, Member member) {
         return new TeamMember(team, member, TeamRole.LEADER);
     }
