@@ -113,7 +113,7 @@ class TeamServiceImplTest {
 
     @Test
     @DisplayName(value = "팀 생성 실패_팀 이름 길이 미충족(부족)")
-    void createTeam_fail_teamNameLength() throws Exception {
+    void createTeam_fail_teamNameTooShort() throws Exception {
         // given
         MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
 
@@ -125,7 +125,7 @@ class TeamServiceImplTest {
 
     @Test
     @DisplayName(value = "팀 생성 실패_팀 이름 길이 미충족(넘음)")
-    void createTeam_fail_teamNameLength2() throws Exception {
+    void createTeam_fail_teamNameTooLong() throws Exception {
         // given
         MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
 
