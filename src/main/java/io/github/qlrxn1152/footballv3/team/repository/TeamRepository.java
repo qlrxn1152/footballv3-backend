@@ -11,7 +11,7 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
 
     boolean existsByTeamName(String teamName);
 
-    @EntityGraph(attributePaths = "leaderMemberrrrr")
+    @Query("select t from Team t join fetch t.leaderMember order by t.createdAt desc")
     List<Team> findAllByOrderByCreatedAtDesc();
 
 }
