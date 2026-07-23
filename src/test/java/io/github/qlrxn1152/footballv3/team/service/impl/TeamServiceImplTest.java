@@ -16,7 +16,12 @@ import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.AlreadyJoinedTeamException;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import org.assertj.core.api.Assertions;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +44,29 @@ class TeamServiceImplTest {
 
     @Autowired private TeamRepository teamRepository;
     @Autowired private TeamMemberRepository teamMemberRepository;
+
+    @Autowired private EntityManagerFactory emf;
+    @Autowired private EntityManager em;
+
+    @BeforeEach
+    void setUp() {
+        for (int i = 1; i <= 100; i++) {
+            MemberCreateResponse member =
+                    memberService.signup(
+                            new MemberCreateRequest(
+                                    "user" + i,
+                                    "1234"
+                            )
+                    );
+
+            teamService.createTeam(
+                    new TeamCreateRequest(
+                            "team" + i
+                    ),
+                    member.getMemberId()
+            );
+        }
+    }
 
     @Test
     @DisplayName(value = "팀 생성")
@@ -163,6 +191,25 @@ class TeamServiceImplTest {
 
         // then
         assertThat(response).isEmpty();
+    }
+
+    @Test
+    @DisplayName(value = "팀 전체조회_쿼리튜닝 이전")
+    void findTeams_before() throws Exception {
+
+        em.flush();
+        em.clear();
+
+        SessionFactory sessionFactory = emf.unwrap(SessionFactory.class);
+        Statistics statistics = sessionFactory.getStatistics();
+
+        statistics.clear();
+
+        teamService.getTeams(); // 실제 실행코드 => 즉, 유저가 팀들 조회를 하고싶어서 /api/teams GET 요청을 보냄
+
+        long queryCount = statistics.getPrepareStatementCount();
+
+        System.out.println("쿼리 실행 갯수 : " + queryCount);
     }
 
 
