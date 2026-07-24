@@ -53,7 +53,7 @@ public class TeamJoinRequestServiceImpl implements TeamJoinRequestService {
 
         Team team = teamValidator.validateExistTeamAndReturnWithLeaderMember(teamId); // 쿼리 1번
 
-        Member member = memberValidator.validateExistMemberAndReturn(memberId); // 영속성 캐쉬에 있는거로 확인 ( team -> leaderMember )
+        Member member = memberValidator.validateExistMemberAndReturn(memberId); // 영속성 캐쉬에 있는거로 확인 ( team -> leaderMember ) -> 없으면 다시조회 ..
         teamValidator.validateCheckTeamLeader(team, member.getId()); // 영속성 캐쉬에 있는거로 확인 ( team 이 존재)
 
         // 가입신청이 오래된 순서로 정렬 ...
