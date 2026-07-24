@@ -27,6 +27,7 @@ public class TeamJoinRequest {
     @JoinColumn(name = "member_id", nullable = false, unique = true)
     private Member member;
 
+    @Column(name = "requested_at", nullable = false)
     private LocalDateTime requestedAt;
 
     private TeamJoinRequest(Team team, Member member) {

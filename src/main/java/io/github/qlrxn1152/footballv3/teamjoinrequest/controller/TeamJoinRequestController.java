@@ -19,7 +19,7 @@ public class TeamJoinRequestController {
 
     private final TeamJoinRequestService teamJoinRequestService;
 
-    @PostMapping("/api/teams/{teamId}/join-request")
+    @PostMapping("/api/teams/{teamId}/join-requests")
     public ResponseEntity<TeamJoinRequestResponse> createJoinRequest(@PathVariable Long teamId, @AuthenticationPrincipal Jwt jwt) {
         TeamJoinRequestResponse response = teamJoinRequestService.createJoinRequest(teamId, Long.valueOf(jwt.getSubject()));
 

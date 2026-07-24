@@ -26,8 +26,13 @@ public class TeamValidator {
         }
     }
 
-    public Team validateExistTeamAndReturn(Long teamId) {
+    public Team validateExistTeamAndReturnWithLeaderMember(Long teamId) {
         return teamRepository.findByIdWithLeaderMember(teamId)
+                .orElseThrow(NotFoundTeamException::new);
+    }
+
+    public Team validateExistTeamAndReturn(Long teamId) {
+        return teamRepository.findById(teamId)
                 .orElseThrow(NotFoundTeamException::new);
     }
 
