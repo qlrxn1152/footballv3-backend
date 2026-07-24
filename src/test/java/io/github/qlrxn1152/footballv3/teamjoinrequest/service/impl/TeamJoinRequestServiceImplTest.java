@@ -1,21 +1,30 @@
 package io.github.qlrxn1152.footballv3.teamjoinrequest.service.impl;
 
+import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.dto.request.MemberCreateRequest;
 import io.github.qlrxn1152.footballv3.member.dto.response.MemberCreateResponse;
 import io.github.qlrxn1152.footballv3.member.exception.exceptions.NotFoundMemberException;
 import io.github.qlrxn1152.footballv3.member.repository.MemberRepository;
 import io.github.qlrxn1152.footballv3.member.service.MemberService;
+import io.github.qlrxn1152.footballv3.team.domain.TeamRole;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamDetailResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamMemberResponse;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotFoundTeamException;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotTeamLeaderException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestApproveResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestListResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestMemberResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.AlreadyRequestedTeamJoinException;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.NotFoundTeamJoinRequestException;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.NotSameTeamException;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.repository.TeamJoinRequestRepository;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
+import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.AlreadyJoinedTeamException;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import jakarta.persistence.EntityManager;
@@ -46,6 +55,7 @@ class TeamJoinRequestServiceImplTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private TeamRepository teamRepository;
     @Autowired private TeamMemberRepository teamMemberRepository;
+    @Autowired private TeamJoinRequestRepository teamJoinRequestRepository;
 
     @Test
     @DisplayName(value = "팀 가입요청 성공")
@@ -234,6 +244,81 @@ class TeamJoinRequestServiceImplTest {
                 .isInstanceOf(NotFoundTeamException.class)
                 .hasMessage("팀 조회 실패");
     }
+
+    @Test
+    @DisplayName(value = "팀장은 가입신청 승인할 수 있다.")
+    void approveJoinRequest() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        // when
+        TeamJoinRequestApproveResponse response = teamJoinRequestService.approveJoinRequest(team.getTeamId(), leader.getMemberId(), joinRequest.getRequestId());
+        TeamDetailResponse teamDetail = teamService.getTeam(team.getTeamId());
+        TeamMember approvedMember = teamMemberRepository.findByMemberId(user.getMemberId()).get();
+
+        // then
+        assertThat(response.getTeamId()).isEqualTo(team.getTeamId());
+        assertThat(response.getTeamRole()).isEqualTo(TeamRole.MEMBER);
+        assertThat(response.getMemberId()).isEqualTo(user.getMemberId());
+        assertThat(teamDetail.getMemberCount()).isEqualTo(2);
+        assertThat(teamDetail.getMembers()).extracting(TeamMemberResponse::getUsername).containsExactly("leadermember", "user");
+        assertThat(approvedMember.getMember().getId()).isEqualTo(user.getMemberId());
+        assertThat(approvedMember.getTeam().getId()).isEqualTo(team.getTeamId());
+        assertThat(approvedMember.getRole()).isEqualTo(TeamRole.MEMBER);
+        assertThat(teamJoinRequestRepository.findById(joinRequest.getRequestId()).isEmpty()).isTrue();
+    }
+
+    @Test
+    @DisplayName(value = "팀장은 아닌 회원은 가입신청 수락에 실패해야한다.")
+    void approveJoinRequest_fail_notTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        // when
+        assertThatThrownBy(() -> teamJoinRequestService.approveJoinRequest(team.getTeamId(), user.getMemberId(), joinRequest.getRequestId()))
+                .isInstanceOf(NotTeamLeaderException.class)
+                .hasMessage("팀장이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "존재하지 않는 가입신청은 승인에 실패해야한다.")
+    void approveJoinRequest_fail_notFoundRequest() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        // when
+        assertThatThrownBy(() -> teamJoinRequestService.approveJoinRequest(team.getTeamId(), leader.getMemberId(), 999L))
+                .isInstanceOf(NotFoundTeamJoinRequestException.class)
+                .hasMessage("가입신청 조회 실패");
+    }
+
+    @Test
+    @DisplayName(value = "자신의 팀이 아닌 다른팀의 요청은 승인할 수 없다.")
+    void approveJoinRequest_fail_notSameTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        // when
+        assertThatThrownBy(() -> teamJoinRequestService.approveJoinRequest(team.getTeamId(), leaderB.getMemberId(), joinRequest.getRequestId()))
+                .isInstanceOf(NotTeamLeaderException.class)
+                .hasMessage("팀장이 아닙니다.");
+    }
+
 
 
 

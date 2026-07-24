@@ -3,15 +3,16 @@ package io.github.qlrxn1152.footballv3.teamjoinrequest.service.impl;
 import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
-import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotTeamLeaderException;
 import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.domain.TeamJoinRequest;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestApproveResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestListResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestMemberResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.repository.TeamJoinRequestRepository;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.validation.TeamJoinRequestValidator;
+import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import io.github.qlrxn1152.footballv3.teammember.validation.TeamMemberValidator;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ import java.util.List;
 public class TeamJoinRequestServiceImpl implements TeamJoinRequestService {
 
     private final TeamJoinRequestRepository teamJoinRequestRepository;
+    private final TeamMemberRepository teamMemberRepository;
 
     private final TeamValidator teamValidator;
     private final TeamMemberValidator teamMemberValidator;
@@ -63,5 +65,29 @@ public class TeamJoinRequestServiceImpl implements TeamJoinRequestService {
                 .toList();
 
         return TeamJoinRequestListResponse.of(team, requests);
+    }
+
+    @Override
+    public TeamJoinRequestApproveResponse approveJoinRequest(Long teamId, Long loginMember, Long requestId) {
+        Team team = teamValidator.validateExistTeamAndReturnWithLeaderMember(teamId); // 쿼리 // 리더멤버도 같이 가지고옴
+        Member leaderMember = memberValidator.validateExistMemberAndReturn(loginMember); // 쿼리
+        TeamJoinRequest joinRequest = teamJoinRequestValidator.validateExistTeamJoinRequestAndReturnWithMember(requestId); // 쿼리
+
+        // 가입신청에 있는 팀이 해당팀이 맞나?
+        teamJoinRequestValidator.validateSameTeam(joinRequest, team.getId());
+
+        // 해당팀의 팀장이 맞나?
+        teamValidator.validateCheckTeamLeader(team, leaderMember.getId());
+
+        // request 에 있는 멤버가 이미 팀에 소속된 상태는 아닌가?
+        teamMemberValidator.validateAlreadyJoinedTeam(joinRequest.getMember().getId());
+
+        // 가입 -> 테이블 행은 삭제 ? ( 또는, 상태를 나타내는 필드를 추가해서 ? )
+        TeamMember teamMember = teamMemberRepository.save(TeamMember.joinTeam(team, joinRequest.getMember())); // 쿼리
+        teamJoinRequestRepository.delete(joinRequest); // 쿼리
+
+        // 쿼리가 총 5번 ...
+
+        return TeamJoinRequestApproveResponse.of(teamMember);
     }
 }

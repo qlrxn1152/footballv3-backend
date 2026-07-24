@@ -1,5 +1,6 @@
 package io.github.qlrxn1152.footballv3.teamjoinrequest.controller;
 
+import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestApproveResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestListResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
@@ -36,4 +37,12 @@ public class TeamJoinRequestController {
 
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
+
+    @PostMapping("/api/teams/{teamId}/join-requests/{requestId}/approve")
+    public ResponseEntity<TeamJoinRequestApproveResponse> approveJoinRequest(@PathVariable Long teamId, @PathVariable Long requestId, @AuthenticationPrincipal Jwt jwt) {
+        TeamJoinRequestApproveResponse response = teamJoinRequestService.approveJoinRequest(teamId, Long.valueOf(jwt.getSubject()), requestId);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
 }
