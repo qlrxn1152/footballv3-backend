@@ -19,7 +19,7 @@ public class MemberValidator {
         }
     }
 
-    public Member validateExistMember(Long memberId) {
+    public Member validateExistMemberAndReturn(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(NotFoundMemberException::new);
     }

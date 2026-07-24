@@ -39,7 +39,7 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional(readOnly = true)
     public MemberMeResponse getMe(Long memberId) {
-        Member member = memberValidator.validateExistMember(memberId);
+        Member member = memberValidator.validateExistMemberAndReturn(memberId);
         return MemberMeResponse.of(member);
     }
 }

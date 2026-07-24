@@ -8,13 +8,10 @@ import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamDetailResponse;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamMemberResponse;
-import io.github.qlrxn1152.footballv3.team.exception.exceptions.DuplicateTeamNameException;
-import io.github.qlrxn1152.footballv3.team.exception.exceptions.TeamNameLengthException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
-import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.AlreadyJoinedTeamException;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import io.github.qlrxn1152.footballv3.teammember.validation.TeamMemberValidator;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +40,7 @@ public class TeamServiceImpl implements TeamService {
 
         teamValidator.validateExistsTeamName(normalizedTeamName);
         teamValidator.validateTeamNameLength(normalizedTeamName);
-        Member member = memberValidator.validateExistMember(memberId);
+        Member member = memberValidator.validateExistMemberAndReturn(memberId);
         teamMemberValidator.validateAlreadyJoinedTeam(memberId);
 
         Team savedTeam = teamRepository.save(Team.createTeam(normalizedTeamName, member));
