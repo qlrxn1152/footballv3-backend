@@ -52,6 +52,7 @@ public class TeamJoinRequestServiceImpl implements TeamJoinRequestService {
     public TeamJoinRequestListResponse getJoinRequests(Long teamId, Long memberId) {
 
         Team team = teamValidator.validateExistTeamAndReturnWithLeaderMember(teamId); // 쿼리 1번
+
         Member member = memberValidator.validateExistMemberAndReturn(memberId); // 영속성 캐쉬에 있는거로 확인 ( team -> leaderMember )
         teamValidator.validateCheckTeamLeader(team, member.getId()); // 영속성 캐쉬에 있는거로 확인 ( team 이 존재)
 
