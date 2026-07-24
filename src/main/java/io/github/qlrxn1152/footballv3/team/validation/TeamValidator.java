@@ -3,6 +3,7 @@ package io.github.qlrxn1152.footballv3.team.validation;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.DuplicateTeamNameException;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotFoundTeamException;
+import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotTeamLeaderException;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.TeamNameLengthException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,12 @@ public class TeamValidator {
     public Team validateExistTeamAndReturn(Long teamId) {
         return teamRepository.findById(teamId)
                 .orElseThrow(NotFoundTeamException::new);
+    }
+
+    public void validateCheckTeamLeader(Team team, Long memberId) {
+        if (!team.getLeaderMember().getId().equals(memberId)) {
+            throw new NotTeamLeaderException();
+        }
     }
 
 

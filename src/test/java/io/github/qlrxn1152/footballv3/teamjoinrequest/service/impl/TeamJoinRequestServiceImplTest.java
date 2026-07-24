@@ -1,17 +1,18 @@
 package io.github.qlrxn1152.footballv3.teamjoinrequest.service.impl;
 
-import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.dto.request.MemberCreateRequest;
 import io.github.qlrxn1152.footballv3.member.dto.response.MemberCreateResponse;
 import io.github.qlrxn1152.footballv3.member.exception.exceptions.NotFoundMemberException;
 import io.github.qlrxn1152.footballv3.member.repository.MemberRepository;
 import io.github.qlrxn1152.footballv3.member.service.MemberService;
-import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotFoundTeamException;
+import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotTeamLeaderException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestListResponse;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestMemberResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.AlreadyRequestedTeamJoinException;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
@@ -19,8 +20,8 @@ import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.AlreadyJoi
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -39,6 +39,9 @@ class TeamJoinRequestServiceImplTest {
     @Autowired private MemberService memberService;
     @Autowired private TeamService teamService;
     @Autowired private TeamJoinRequestService teamJoinRequestService;
+
+    @Autowired private EntityManager em;
+    @Autowired private EntityManagerFactory emf;
 
     @Autowired private MemberRepository memberRepository;
     @Autowired private TeamRepository teamRepository;
@@ -60,7 +63,7 @@ class TeamJoinRequestServiceImplTest {
         assertThat(response.getTeamId()).isEqualTo(team.getTeamId());
         assertThat(response.getMemberId()).isEqualTo(memberB.getMemberId());
         assertThat(teamMemberRepository.existsByMemberId(memberB.getMemberId())).isEqualTo(false);
-        assertThat(teamMemberRepository.findAllByTeamId(team.getTeamId())).hasSize(1);
+        assertThat(teamMemberRepository.findAllByTeamIdWithMember(team.getTeamId())).hasSize(1);
         assertThat(teamMemberRepository.findByMemberId(memberB.getMemberId())).isEmpty();
     }
 
@@ -137,5 +140,102 @@ class TeamJoinRequestServiceImplTest {
                 .isInstanceOf(AlreadyRequestedTeamJoinException.class)
                 .hasMessage("이미 팀 가입신청이 존재합니다.");
     }
+
+    @Test
+    @DisplayName(value = "팀 가입신청 목록 조회")
+    void getTeamJoinRequests() throws Exception {
+        // given
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("userA", "1234"));
+        MemberCreateResponse memberB = memberService.signup(new MemberCreateRequest("userB", "1234"));
+        MemberCreateResponse memberC = memberService.signup(new MemberCreateRequest("userC", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), member.getMemberId());
+        teamJoinRequestService.createJoinRequest(team.getTeamId(), memberB.getMemberId());
+        teamJoinRequestService.createJoinRequest(team.getTeamId(), memberC.getMemberId());
+
+        // when
+        TeamJoinRequestListResponse response = teamJoinRequestService.getJoinRequests(team.getTeamId(), member.getMemberId());
+
+        // then
+        assertThat(response.getTeamId()).isEqualTo(team.getTeamId());
+        assertThat(response.getRequestCount()).isEqualTo(2);
+        assertThat(response.getRequests()).extracting(TeamJoinRequestMemberResponse::getMemberUsername).containsExactly("userb", "userc");
+    }
+
+    @Test
+    @DisplayName(value = "팀 가입신청 없는 상태에서 목록조회")
+    void getTeamJoinRequests_empty() throws Exception {
+        // given
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("userA", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), member.getMemberId());
+
+        // when
+        TeamJoinRequestListResponse response = teamJoinRequestService.getJoinRequests(team.getTeamId(), member.getMemberId());
+
+        // then
+        assertThat(response.getTeamId()).isEqualTo(team.getTeamId());
+        assertThat(response.getRequestCount()).isZero();
+        assertThat(response.getRequests()).isEmpty();
+    }
+
+    @Test
+    @DisplayName(value = "팀 가입신청 없는 상태에서 목록조회 쿼리 수 확인")
+    void getTeamJoinRequests_empty_checkQueryCount() throws Exception {
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("userA", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), member.getMemberId());
+
+        em.flush();
+        em.clear();
+
+        SessionFactory sessionFactory =
+                emf.unwrap(SessionFactory.class);
+
+        Statistics statistics =
+                sessionFactory.getStatistics();
+
+        statistics.clear();
+
+        teamJoinRequestService.getJoinRequests(
+                team.getTeamId(),
+                member.getMemberId()
+        );
+
+        long queryCount =
+                statistics.getPrepareStatementCount();
+
+        assertThat(queryCount).isEqualTo(2);
+    }
+
+
+    @Test
+    @DisplayName(value = "팀장이 아닌 회원은 조회에 실패해야한다")
+    void getTeamJoinRequests_notTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("userA", "1234"));
+        MemberCreateResponse memberB = memberService.signup(new MemberCreateRequest("userB", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), member.getMemberId());
+
+
+        // when && then
+        assertThatThrownBy(() -> teamJoinRequestService.getJoinRequests(team.getTeamId(), memberB.getMemberId()))
+                .isInstanceOf(NotTeamLeaderException.class)
+                .hasMessage("팀장이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "존재하지 않는 팀에는 조회에 실패해야한다")
+    void getTeamJoinRequests_notFoundTeam() throws Exception {
+        // given
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("userA", "1234"));
+
+
+        // when && then
+        assertThatThrownBy(() -> teamJoinRequestService.getJoinRequests(999L, member.getMemberId()))
+                .isInstanceOf(NotFoundTeamException.class)
+                .hasMessage("팀 조회 실패");
+    }
+
+
+
 
 }

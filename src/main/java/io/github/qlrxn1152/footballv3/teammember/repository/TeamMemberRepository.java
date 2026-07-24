@@ -14,6 +14,6 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, Long> {
     Optional<TeamMember> findByMemberId(Long memberId);
 
     @Query("select tm from TeamMember tm join fetch tm.member where tm.team.id = :teamId order by tm.joinedAt asc")
-    List<TeamMember> findAllByTeamId(Long teamId); // 해당 팀에 속한 애들 다 가지고옴
+    List<TeamMember> findAllByTeamIdWithMember(Long teamId); // 해당 팀에 속한 애들 다 가지고옴
 
 }

@@ -1,5 +1,6 @@
 package io.github.qlrxn1152.footballv3.teamjoinrequest.controller;
 
+import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestListResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
 import lombok.RequiredArgsConstructor;
@@ -8,9 +9,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -24,5 +28,12 @@ public class TeamJoinRequestController {
         TeamJoinRequestResponse response = teamJoinRequestService.createJoinRequest(teamId, Long.valueOf(jwt.getSubject()));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/api/teams/{teamId}/join-requests")
+    public ResponseEntity<TeamJoinRequestListResponse> getJoinRequests(@AuthenticationPrincipal Jwt jwt, @PathVariable Long teamId) {
+        TeamJoinRequestListResponse response = teamJoinRequestService.getJoinRequests(teamId, Long.valueOf(jwt.getSubject()));
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }

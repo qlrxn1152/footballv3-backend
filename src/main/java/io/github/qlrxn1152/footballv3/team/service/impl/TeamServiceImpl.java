@@ -63,7 +63,7 @@ public class TeamServiceImpl implements TeamService {
     public TeamDetailResponse getTeam(Long teamId) {
         Team team = teamValidator.validateExistTeamAndReturnWithLeaderMember(teamId);
 
-        List<TeamMemberResponse> members = teamMemberRepository.findAllByTeamId(teamId)
+        List<TeamMemberResponse> members = teamMemberRepository.findAllByTeamIdWithMember(teamId)
                 .stream()
                 .map(TeamMemberResponse::of)
                 .toList();
