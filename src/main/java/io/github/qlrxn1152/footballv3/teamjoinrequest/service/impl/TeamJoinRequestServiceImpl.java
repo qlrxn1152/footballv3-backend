@@ -31,13 +31,9 @@ public class TeamJoinRequestServiceImpl implements TeamJoinRequestService {
 
     @Override
     public TeamJoinRequestResponse createJoinRequest(Long teamId, Long memberId) {
-        Team team = teamValidator.validateExistTeamAndReturn(teamId); // 팀장에 대한 정보는 필요하지않네 ?
+        Team team = teamValidator.validateExistTeamAndReturn(teamId);
         Member member = memberValidator.validateExistMemberAndReturn(memberId);
-
-        // 이미 팀에 속한건아닌가 ?
         teamMemberValidator.validateAlreadyJoinedTeam(memberId);
-
-        // 이미 가입신청을 넣은 회원은 아닌가 ?
         teamJoinRequestValidator.validateAlreadyRequested(memberId);
 
 

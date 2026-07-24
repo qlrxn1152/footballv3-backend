@@ -61,7 +61,7 @@ public class TeamServiceImpl implements TeamService {
     @Override
     @Transactional(readOnly = true)
     public TeamDetailResponse getTeam(Long teamId) {
-        Team team = teamValidator.validateExistTeamAndReturn(teamId);
+        Team team = teamValidator.validateExistTeamAndReturnWithLeaderMember(teamId);
 
         List<TeamMemberResponse> members = teamMemberRepository.findAllByTeamId(teamId)
                 .stream()
