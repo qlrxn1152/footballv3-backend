@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @Slf4j
 @RequiredArgsConstructor
@@ -46,8 +44,11 @@ public class TeamJoinRequestController {
     }
 
     @PostMapping("/api/teams/{teamId}/join-requests/{requestId}/reject")
-    public ResponseEntity<> rejectJoinRequest(@PathVariable Long teamId, @PathVariable Long requestId, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Void> rejectJoinRequest(@PathVariable Long teamId, @PathVariable Long requestId, @AuthenticationPrincipal Jwt jwt) {
         teamJoinRequestService.rejectJoinRequest(teamId, Long.valueOf(jwt.getSubject()), requestId);
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+
     }
 
 }

@@ -320,6 +320,164 @@ class TeamJoinRequestServiceImplTest {
                 .hasMessage("해당팀이 아닙니다.");
     }
 
+    @Test
+    @DisplayName(value = "팀장은 가입 신청을 거절할 수 있다.")
+    void rejectJoinRequest() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        // when
+        teamJoinRequestService.rejectJoinRequest(team.getTeamId(), leader.getMemberId(), joinRequest.getRequestId());
+
+
+        // then
+        assertThat(teamJoinRequestRepository.findById(joinRequest.getRequestId()).isEmpty()).isTrue();
+        assertThat(teamJoinRequestRepository.existsByMemberId(user.getMemberId())).isEqualTo(false);
+        assertThat(teamJoinRequestRepository.findAllByTeamId(team.getTeamId()).isEmpty()).isTrue();
+    }
+
+    @Test
+    @DisplayName(value = "가입 신청을 거절하면, 해당 회원은 팀에 가입되지 않는다.")
+    void rejectJoinRequest_notCreateTeamMember() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        // when
+        teamJoinRequestService.rejectJoinRequest(team.getTeamId(), leader.getMemberId(), joinRequest.getRequestId());
+
+
+        // then
+        assertThat(teamMemberRepository.existsByMemberId(user.getMemberId())).isEqualTo(false);
+        assertThat(teamMemberRepository.findByMemberId(user.getMemberId()).isEmpty()).isTrue();
+    }
+
+    @Test
+    @DisplayName(value = "팀에 속하지않은 회원은 가입신청 거절에 실패해야한다.")
+    void rejectJoinRequest_fail_notJoinedTeam() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+        MemberCreateResponse normal = memberService.signup(new MemberCreateRequest("normal", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamJoinRequestService.rejectJoinRequest(team.getTeamId(), normal.getMemberId(), joinRequest.getRequestId()))
+                .isInstanceOf(NotJoinedTeamException.class)
+                .hasMessage("팀에 속한 회원이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "팀에속한 팀장이 아닌 일반 회원은 가입신청 거절에 실패해야한다.")
+    void rejectJoinRequest_fail_notTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+        MemberCreateResponse normal = memberService.signup(new MemberCreateRequest("normal", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), normal.getMemberId());
+        TeamJoinRequestResponse joinRequestUser = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), leader.getMemberId(), joinRequest.getRequestId()); // leader -> normal 유저의 가입신청을 수락
+
+        // when && then
+        assertThat(teamMemberRepository.findByMemberId(normal.getMemberId())).isNotNull(); // normal -> 조회성공
+
+        assertThatThrownBy(() -> teamJoinRequestService.rejectJoinRequest(team.getTeamId(), normal.getMemberId(), joinRequestUser.getRequestId()))
+                .isInstanceOf(NotTeamLeaderException.class)
+                .hasMessage("팀장이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "다른팀 소속은 가입신청을 거절할 수 없다. ( 팀장 ) ")
+    void rejectJoinRequest_fail_notSameTeam_leader() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+        MemberCreateResponse normal = memberService.signup(new MemberCreateRequest("normal", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), normal.getMemberId());
+
+        TeamJoinRequestResponse joinRequestUser = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        // when && then
+        assertThat(teamMemberRepository.findByMemberId(normal.getMemberId())).isNotNull(); // normal -> 조회성공
+
+        assertThatThrownBy(() -> teamJoinRequestService.rejectJoinRequest(team.getTeamId(), normal.getMemberId(), joinRequestUser.getRequestId()))
+                .isInstanceOf(NotSameTeamException.class)
+                .hasMessage("해당팀이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "다른팀 소속은 가입신청을 거절할 수 없다. ( 유저 ) ")
+    void rejectJoinRequest_fail_notSameTeam_user() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse teamBUser = memberService.signup(new MemberCreateRequest("teamBUser", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+
+        TeamJoinRequestResponse joinRequestUser = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        TeamJoinRequestResponse teamBRequest = teamJoinRequestService.createJoinRequest(teamB.getTeamId(), teamBUser.getMemberId());
+        teamJoinRequestService.approveJoinRequest(teamB.getTeamId(), leaderB.getMemberId(), teamBRequest.getRequestId()); // leaderB -> teamBUser 가입신청 승인
+
+        // when && then
+        assertThat(teamMemberRepository.findByMemberId(teamBUser.getMemberId()).isEmpty()).isFalse();
+        assertThat(teamMemberRepository.findByMemberId(teamBUser.getMemberId()).get().getTeam().getId()).isEqualTo(teamB.getTeamId());
+
+
+        assertThatThrownBy(() -> teamJoinRequestService.rejectJoinRequest(team.getTeamId(), teamBUser.getMemberId(), joinRequestUser.getRequestId()))
+                .isInstanceOf(NotSameTeamException.class)
+                .hasMessage("해당팀이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "존재하지 않는 팀의 가입신청은 거절할 수 없다")
+    void rejectJoinRequest_fail_notFoundTeam() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        TeamJoinRequestResponse joinRequestUser = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamJoinRequestService.rejectJoinRequest(999L, leader.getMemberId(), joinRequestUser.getRequestId()))
+                .isInstanceOf(NotFoundTeamException.class)
+                .hasMessage("팀 조회 실패");
+    }
+
+    @Test
+    @DisplayName(value = "존재하지 않는 팀의 가입신청은 거절할 수 없다")
+    void rejectJoinRequest_fail_notFoundTeamJoinRequest() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        TeamJoinRequestResponse joinRequestUser = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamJoinRequestService.rejectJoinRequest(team.getTeamId(), leader.getMemberId(), 9999L))
+                .isInstanceOf(NotFoundTeamJoinRequestException.class)
+                .hasMessage("가입신청 조회 실패");
+    }
+
+
+
+
 
 
 

@@ -4,8 +4,6 @@ import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinReque
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestListResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestResponse;
 
-import java.util.List;
-
 public interface TeamJoinRequestService {
 
     TeamJoinRequestResponse createJoinRequest(Long teamId, Long memberId);
@@ -14,7 +12,7 @@ public interface TeamJoinRequestService {
 
     TeamJoinRequestApproveResponse approveJoinRequest(Long teamId, Long loginMemberId, Long requestId);
 
-    TeamJoinRequestRejectResponse rejectJoinRequest(Long teamId, Long loginMemberId, Long requestId);
+    void rejectJoinRequest(Long teamId, Long loginMemberId, Long requestId);
 
 
 }
