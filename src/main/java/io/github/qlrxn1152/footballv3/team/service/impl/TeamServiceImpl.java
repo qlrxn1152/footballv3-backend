@@ -4,10 +4,8 @@ import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamDetailResponse;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamMemberResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.*;
+import io.github.qlrxn1152.footballv3.team.exception.exceptions.SameTeamLeaderException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
@@ -69,6 +67,32 @@ public class TeamServiceImpl implements TeamService {
                 .toList();
 
         return TeamDetailResponse.of(team, members);
+    }
+
+    @Override
+    public TeamLeaderTransferResponse transferTeamLeader(Long teamId, Long loginMemberId, Long newLeaderMemberId) {
+        Team team = teamValidator.validateExistTeamAndReturn(teamId);
+        Member oldLeaderMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
+        Member newLeaderMember = memberValidator.validateExistMemberAndReturn(newLeaderMemberId);
+
+        // 자기 자신에게 위임하려고 하는거는 아닌지
+        teamValidator.validateCheckSelfAppoint(oldLeaderMember.getId(), newLeaderMember.getId());
+
+        // 팀에 속한게 맞는지
+        TeamMember oldLeaderMemberTeamMember = teamMemberValidator.validateExistTeamMemberAndReturn(oldLeaderMember.getId());
+        TeamMember newLeaderMemberTeamMember = teamMemberValidator.validateExistTeamMemberAndReturn(newLeaderMember.getId());
+
+        // 해당팀의 리더가 맞는지, 해당팀의 유저가 맞는지
+        teamValidator.validateCheckTeamLeader(team, oldLeaderMember.getId());
+        teamMemberValidator.validateCheckTeamMember(newLeaderMemberTeamMember);
+
+        // 롤 변경
+        oldLeaderMemberTeamMember.changeToMember();
+        newLeaderMemberTeamMember.changeToLeader();
+        team.transferTeamLeader(newLeaderMember);
+
+
+        return TeamLeaderTransferResponse.of(team, oldLeaderMember, newLeaderMember);
     }
 
 

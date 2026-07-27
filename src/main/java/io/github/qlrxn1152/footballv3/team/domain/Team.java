@@ -45,6 +45,10 @@ public class Team {
         return new Team(teamName, leaderMember);
     }
 
+    public void transferTeamLeader(Member newLeaderMember) {
+        this.leaderMember = newLeaderMember;
+    }
+
 
 
 

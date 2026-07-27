@@ -44,10 +44,6 @@ public class TeamMember {
     }
 
 
-
-
-
-
     public static TeamMember createTeam(Team team, Member member) {
         return new TeamMember(team, member, TeamRole.LEADER);
     }
@@ -55,6 +51,15 @@ public class TeamMember {
     public static TeamMember joinTeam(Team team, Member member) {
         return new TeamMember(team, member, TeamRole.MEMBER);
     }
+
+    public void changeToMember() {
+        this.role = TeamRole.MEMBER;
+    }
+
+    public void changeToLeader() {
+        this.role = TeamRole.LEADER;
+    }
+
 
 
 

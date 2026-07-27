@@ -38,7 +38,12 @@ public class TeamMemberValidator {
         if (!teamMember.getRole().equals(TeamRole.MEMBER)) {
             throw new NotTeamMemberException();
         }
+    }
 
+    public void validateCheckTeamMember(TeamMember teamMember) {
+        if (!teamMember.getRole().equals(TeamRole.MEMBER)) {
+            throw new NotTeamMemberException();
+        }
     }
 
 

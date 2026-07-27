@@ -1,8 +1,10 @@
 package io.github.qlrxn1152.footballv3.team.controller;
 
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
+import io.github.qlrxn1152.footballv3.team.dto.request.TeamLeaderTransferRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamDetailResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamLeaderTransferResponse;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import jakarta.validation.Valid;
@@ -44,5 +46,11 @@ public class TeamController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @PatchMapping("/api/teams/{teamId}/leader")
+    public ResponseEntity<TeamLeaderTransferResponse> transferTeamLeader(@PathVariable Long teamId, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody TeamLeaderTransferRequest request) {
+        TeamLeaderTransferResponse response = teamService.transferTeamLeader(teamId, Long.valueOf(jwt.getSubject()), request.getNewLeaderMemberId());
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
 
 }

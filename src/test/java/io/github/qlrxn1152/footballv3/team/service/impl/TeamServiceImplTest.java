@@ -11,15 +11,20 @@ import io.github.qlrxn1152.footballv3.team.domain.TeamRole;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamDetailResponse;
+import io.github.qlrxn1152.footballv3.team.dto.response.TeamLeaderTransferResponse;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
-import io.github.qlrxn1152.footballv3.team.exception.exceptions.DuplicateTeamNameException;
-import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotFoundTeamException;
-import io.github.qlrxn1152.footballv3.team.exception.exceptions.TeamNameLengthException;
+import io.github.qlrxn1152.footballv3.team.exception.exceptions.*;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestResponse;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.NotSameTeamException;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.AlreadyJoinedTeamException;
+import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.NotJoinedTeamException;
+import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.NotTeamMemberException;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
+import io.github.qlrxn1152.footballv3.teammember.service.TeamMemberService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.assertj.core.api.Assertions;
@@ -45,6 +50,8 @@ class TeamServiceImplTest {
 
     @Autowired private TeamService teamService;
     @Autowired private MemberService memberService;
+    @Autowired private TeamJoinRequestService teamJoinRequestService;
+    @Autowired private TeamMemberService teamMemberService;
 
     @Autowired private TeamRepository teamRepository;
     @Autowired private TeamMemberRepository teamMemberRepository;
@@ -283,6 +290,117 @@ class TeamServiceImplTest {
         assertThat(queryCount).isEqualTo(2);
     }
 
+    @Test
+    @DisplayName(value = "팀장 변경")
+    void transferTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
+        MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeaderMember.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeaderMember.getMemberId(), joinRequest.getRequestId());
+
+        // when
+        teamService.transferTeamLeader(team.getTeamId(), oldLeaderMember.getMemberId(), newLeaderMember.getMemberId());
+        TeamMember oldTeamMember = teamMemberRepository.findByMemberId(oldLeaderMember.getMemberId()).get();
+        TeamMember newTeamMember = teamMemberRepository.findByMemberId(newLeaderMember.getMemberId()).get();
+
+        Team afterTeam = teamRepository.findById(team.getTeamId()).get();
+
+        // then
+        assertThat(afterTeam.getLeaderMember().getId()).isEqualTo(newLeaderMember.getMemberId());
+        assertThat(oldTeamMember.getRole()).isEqualTo(TeamRole.MEMBER);
+        assertThat(newTeamMember.getRole()).isEqualTo(TeamRole.LEADER);
+    }
+
+    @Test
+    @DisplayName(value = "팀장이 아닌 회원은 변경에 실패해야한다.")
+    void transferTeamLeader_fail_notTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
+        MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeaderMember.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeaderMember.getMemberId(), joinRequest.getRequestId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.transferTeamLeader(team.getTeamId(), newLeaderMember.getMemberId(), newLeaderMember.getMemberId()))
+                .isInstanceOf(SameTeamLeaderException.class)
+                .hasMessage("자기 자신에게 팀장 위임은 불가합니다.");
+    }
+
+    @Test
+    @DisplayName(value = "자기 자신에게 변경을 시도할 수 없다.")
+    void transferTeamLeader_fail_self() throws Exception {
+        // given
+        MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
+        MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeaderMember.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeaderMember.getMemberId(), joinRequest.getRequestId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.transferTeamLeader(team.getTeamId(), oldLeaderMember.getMemberId(), oldLeaderMember.getMemberId()))
+                .isInstanceOf(SameTeamLeaderException.class)
+                .hasMessage("자기 자신에게 팀장 위임은 불가합니다.");
+    }
+
+    @Test
+    @DisplayName(value = "팀에 소속되지 않은 회원에게는 위임에 실패한다.")
+    void transferTeamLeader_fail_notJoinTeamMember() throws Exception {
+        // given
+        MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
+        MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.transferTeamLeader(team.getTeamId(), oldLeaderMember.getMemberId(), newLeaderMember.getMemberId()))
+                .isInstanceOf(NotJoinedTeamException.class)
+                .hasMessage("팀에 속한 회원이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "해당팀에 소속되지 않은 회원에게는 위임에 실패한다.")
+    void transferTeamLeader_fail_notJoinSameTeamMember() throws Exception {
+        // given
+        MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
+        MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), newLeaderMember.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.transferTeamLeader(team.getTeamId(), oldLeaderMember.getMemberId(), newLeaderMember.getMemberId()))
+                .isInstanceOf(NotTeamMemberException.class)
+                .hasMessage("해당팀의 일반 유저가 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "새로운 팀장은 팀장 전용 기능을 사용할 수 있다.")
+    void transferTeamLeader_canTeamLeaderMethods() throws Exception {
+        // given
+        MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
+        MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeaderMember.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeaderMember.getMemberId(), joinRequest.getRequestId());
+
+        // when
+        teamService.transferTeamLeader(team.getTeamId(), oldLeaderMember.getMemberId(), newLeaderMember.getMemberId()); // 팀장변경
+
+        // then
+        assertThatCode(() -> teamJoinRequestService.getJoinRequests(team.getTeamId(), newLeaderMember.getMemberId())).doesNotThrowAnyException();
+        assertThatCode(() -> teamMemberService.leaveTeam(team.getTeamId(), oldLeaderMember.getMemberId())).doesNotThrowAnyException();
+        assertThatThrownBy(() -> teamJoinRequestService.getJoinRequests(team.getTeamId(), oldLeaderMember.getMemberId()))
+                .isInstanceOf(NotTeamLeaderException.class)
+                .hasMessage("팀장이 아닙니다.");
+
+    }
 
 
 
