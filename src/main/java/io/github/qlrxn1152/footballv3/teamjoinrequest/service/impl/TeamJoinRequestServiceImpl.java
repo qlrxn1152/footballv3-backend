@@ -1,6 +1,7 @@
 package io.github.qlrxn1152.footballv3.teamjoinrequest.service.impl;
 
 import io.github.qlrxn1152.footballv3.member.domain.Member;
+import io.github.qlrxn1152.footballv3.member.exception.exceptions.NotFoundMemberException;
 import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
@@ -68,16 +69,20 @@ public class TeamJoinRequestServiceImpl implements TeamJoinRequestService {
     }
 
     @Override
-    public TeamJoinRequestApproveResponse approveJoinRequest(Long teamId, Long loginMember, Long requestId) {
+    public TeamJoinRequestApproveResponse approveJoinRequest(Long teamId, Long loginMemberId, Long requestId) {
         Team team = teamValidator.validateExistTeamAndReturnWithLeaderMember(teamId); // 쿼리 // 리더멤버도 같이 가지고옴
-        Member leaderMember = memberValidator.validateExistMemberAndReturn(loginMember); // 쿼리
+        Member loginMember = memberValidator.validateExistMemberAndReturn(loginMemberId); // 쿼리
         TeamJoinRequest joinRequest = teamJoinRequestValidator.validateExistTeamJoinRequestAndReturnWithMember(requestId); // 쿼리
+        TeamMember loginTeamMember = teamMemberValidator.validateExistTeamMemberAndReturn(loginMember.getId());
 
         // 가입신청에 있는 팀이 해당팀이 맞나?
         teamJoinRequestValidator.validateSameTeam(joinRequest, team.getId());
 
-        // 해당팀의 팀장이 맞나?
-        teamValidator.validateCheckTeamLeader(team, leaderMember.getId());
+        // 해당 팀 인원 맞음?
+        teamJoinRequestValidator.validateSameTeam(joinRequest, loginTeamMember.getTeam().getId());
+
+        // 요청한 사람의 해당팀의 팀장이 맞나?
+        teamValidator.validateCheckTeamLeader(team, loginMember.getId());
 
         // request 에 있는 멤버가 이미 팀에 소속된 상태는 아닌가?
         teamMemberValidator.validateAlreadyJoinedTeam(joinRequest.getMember().getId());
@@ -87,7 +92,6 @@ public class TeamJoinRequestServiceImpl implements TeamJoinRequestService {
         teamJoinRequestRepository.delete(joinRequest); // 쿼리
 
         // 쿼리가 총 5번 ...
-
         return TeamJoinRequestApproveResponse.of(teamMember);
     }
 }

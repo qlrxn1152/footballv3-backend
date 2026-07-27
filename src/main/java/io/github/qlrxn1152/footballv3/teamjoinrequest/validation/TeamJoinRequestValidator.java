@@ -26,9 +26,11 @@ public class TeamJoinRequestValidator {
     }
 
     public void validateSameTeam(TeamJoinRequest joinRequest, Long teamId) {
+
         if (!joinRequest.getTeam().getId().equals(teamId)) {
             throw new NotSameTeamException();
         }
+
     }
 
 

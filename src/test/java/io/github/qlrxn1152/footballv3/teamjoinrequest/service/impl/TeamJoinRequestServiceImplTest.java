@@ -310,13 +310,13 @@ class TeamJoinRequestServiceImplTest {
         MemberCreateResponse user = memberService.signup(new MemberCreateRequest("user", "1234"));
 
         TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
-        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId()); // leaderB -> teamB 생성
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), user.getMemberId());
 
         // when
-        assertThatThrownBy(() -> teamJoinRequestService.approveJoinRequest(team.getTeamId(), leaderB.getMemberId(), joinRequest.getRequestId()))
-                .isInstanceOf(NotTeamLeaderException.class)
-                .hasMessage("팀장이 아닙니다.");
+        assertThatThrownBy(() -> teamJoinRequestService.approveJoinRequest(team.getTeamId(), leaderB.getMemberId(), joinRequest.getRequestId())) // leaderB -> teamA 팀의 가입신청을 승인
+                .isInstanceOf(NotSameTeamException.class)
+                .hasMessage("해당팀이 아닙니다.");
     }
 
 
