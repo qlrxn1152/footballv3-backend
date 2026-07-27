@@ -26,6 +26,7 @@ import io.github.qlrxn1152.footballv3.teamjoinrequest.repository.TeamJoinRequest
 import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.AlreadyJoinedTeamException;
+import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.NotJoinedTeamException;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -284,8 +285,8 @@ class TeamJoinRequestServiceImplTest {
 
         // when
         assertThatThrownBy(() -> teamJoinRequestService.approveJoinRequest(team.getTeamId(), user.getMemberId(), joinRequest.getRequestId()))
-                .isInstanceOf(NotTeamLeaderException.class)
-                .hasMessage("팀장이 아닙니다.");
+                .isInstanceOf(NotJoinedTeamException.class)
+                .hasMessage("팀에 속한 회원이 아닙니다.");
     }
 
     @Test
