@@ -6,6 +6,7 @@ import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.NotSa
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.AlreadyJoinedTeamException;
 import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.NotJoinedTeamException;
+import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.NotKickSelfException;
 import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.NotTeamMemberException;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,5 +47,10 @@ public class TeamMemberValidator {
         }
     }
 
+    public void validateSelfKick(Long targetMemberId, Long loginMemberId) {
+        if ( targetMemberId.equals(loginMemberId) ) {
+            throw new NotKickSelfException();
+        }
+    }
 
 }

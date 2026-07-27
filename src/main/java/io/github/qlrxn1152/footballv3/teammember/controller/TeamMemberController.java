@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -23,5 +24,13 @@ public class TeamMemberController {
         teamMemberService.leaveTeam(teamId, Long.valueOf(jwt.getSubject()));
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    @DeleteMapping("/api/teams/{teamId}/members/{targetMemberId}")
+    public ResponseEntity<Void> kickTeamMember(@PathVariable Long teamId, @PathVariable Long targetMemberId, @AuthenticationPrincipal Jwt jwt) {
+        teamMemberService.kickTeamMember(teamId, targetMemberId, Long.valueOf(jwt.getSubject()));
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+
     }
 }
