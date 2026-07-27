@@ -10,10 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Slf4j
@@ -48,7 +45,12 @@ public class TeamJoinRequestController {
         teamJoinRequestService.rejectJoinRequest(teamId, Long.valueOf(jwt.getSubject()), requestId);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-
     }
 
+    @DeleteMapping("/api/teams/{teamId}/join-requests/me")
+    public ResponseEntity<Void> cancelJoinRequest(@AuthenticationPrincipal Jwt jwt, @PathVariable Long teamId) {
+        teamJoinRequestService.cancelJoinRequest(teamId, Long.valueOf(jwt.getSubject()));
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
 }

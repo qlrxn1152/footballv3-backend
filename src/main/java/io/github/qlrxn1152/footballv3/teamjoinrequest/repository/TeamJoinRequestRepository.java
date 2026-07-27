@@ -23,4 +23,6 @@ public interface TeamJoinRequestRepository extends JpaRepository<TeamJoinRequest
 
     boolean existsById(Long requestId);
 
+    Optional<TeamJoinRequest> findByTeamIdAndMemberId(Long teamId, Long memberId);
+
 }

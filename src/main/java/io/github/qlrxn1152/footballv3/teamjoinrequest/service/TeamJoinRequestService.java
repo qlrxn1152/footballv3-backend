@@ -14,5 +14,7 @@ public interface TeamJoinRequestService {
 
     void rejectJoinRequest(Long teamId, Long loginMemberId, Long requestId);
 
+    void cancelJoinRequest(Long teamId, Long loginMemberId);
+
 
 }

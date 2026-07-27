@@ -1,5 +1,6 @@
 package io.github.qlrxn1152.footballv3.teamjoinrequest.validation;
 
+import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.domain.TeamJoinRequest;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.AlreadyRequestedTeamJoinException;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.NotFoundTeamJoinRequestException;
@@ -26,12 +27,16 @@ public class TeamJoinRequestValidator {
     }
 
     public void validateSameTeam(TeamJoinRequest joinRequest, Long teamId) {
-
         if (!joinRequest.getTeam().getId().equals(teamId)) {
             throw new NotSameTeamException();
         }
-
     }
+
+    public TeamJoinRequest validateExistTeamJoinRequestAndReturn(Long teamId, Long memberId) {
+        return teamJoinRequestRepository.findByTeamIdAndMemberId(teamId, memberId)
+                .orElseThrow(NotFoundTeamJoinRequestException::new);
+    }
+
 
 
 

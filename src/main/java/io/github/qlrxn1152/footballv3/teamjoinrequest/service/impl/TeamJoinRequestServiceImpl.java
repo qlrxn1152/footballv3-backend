@@ -10,6 +10,8 @@ import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinReque
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestListResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestMemberResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestResponse;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.NotFoundTeamJoinRequestException;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.NotSameTeamException;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.repository.TeamJoinRequestRepository;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.validation.TeamJoinRequestValidator;
@@ -115,6 +117,18 @@ public class TeamJoinRequestServiceImpl implements TeamJoinRequestService {
         teamMemberValidator.validateAlreadyJoinedTeam(joinRequest.getMember().getId());
 
         // 승인 거절
+        teamJoinRequestRepository.delete(joinRequest);
+    }
+
+    @Override
+    public void cancelJoinRequest(Long teamId, Long loginMemberId) {
+        Team team = teamValidator.validateExistTeamAndReturn(teamId);
+        Member member = memberValidator.validateExistMemberAndReturn(loginMemberId);
+        TeamJoinRequest joinRequest = teamJoinRequestValidator.validateExistTeamJoinRequestAndReturn(team.getId(), member.getId());
+
+        teamJoinRequestValidator.validateSameTeam(joinRequest, team.getId());
+
+
         teamJoinRequestRepository.delete(joinRequest);
     }
 }
