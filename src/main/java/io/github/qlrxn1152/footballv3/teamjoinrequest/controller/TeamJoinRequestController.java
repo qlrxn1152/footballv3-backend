@@ -45,4 +45,9 @@ public class TeamJoinRequestController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @PostMapping("/api/teams/{teamId}/join-requests/{requestId}/reject")
+    public ResponseEntity<> rejectJoinRequest(@PathVariable Long teamId, @PathVariable Long requestId, @AuthenticationPrincipal Jwt jwt) {
+        teamJoinRequestService.rejectJoinRequest(teamId, Long.valueOf(jwt.getSubject()), requestId);
+    }
+
 }

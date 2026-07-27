@@ -12,7 +12,9 @@ public interface TeamJoinRequestService {
 
     TeamJoinRequestListResponse getJoinRequests(Long teamId, Long leaderMemberId);
 
-    TeamJoinRequestApproveResponse approveJoinRequest(Long teamId, Long leaderMemberId, Long requestId);
+    TeamJoinRequestApproveResponse approveJoinRequest(Long teamId, Long loginMemberId, Long requestId);
+
+    TeamJoinRequestRejectResponse rejectJoinRequest(Long teamId, Long loginMemberId, Long requestId);
 
 
 }
