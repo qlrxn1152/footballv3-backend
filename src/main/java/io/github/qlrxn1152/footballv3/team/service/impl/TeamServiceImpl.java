@@ -5,10 +5,12 @@ import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.*;
+import io.github.qlrxn1152.footballv3.team.exception.exceptions.CanNotDisbandTeamException;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.SameTeamLeaderException;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.repository.TeamJoinRequestRepository;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import io.github.qlrxn1152.footballv3.teammember.validation.TeamMemberValidator;
@@ -27,6 +29,7 @@ public class TeamServiceImpl implements TeamService {
 
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final TeamJoinRequestRepository teamJoinRequestRepository;
 
     private final MemberValidator memberValidator;
     private final TeamValidator teamValidator;
@@ -93,6 +96,26 @@ public class TeamServiceImpl implements TeamService {
 
 
         return TeamLeaderTransferResponse.of(team, oldLeaderMember, newLeaderMember);
+    }
+
+    @Override
+    public void disbandTeam(Long teamId, Long loginMemberId) {
+        Team team = teamValidator.validateExistTeamAndReturn(teamId);
+        Member leaderMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
+
+        // 해당팀 팀장맞음 ?
+        teamValidator.validateCheckTeamLeader(team, leaderMember.getId());
+
+        // 인원이 팀장본인뿐인 1명인거 맞음?
+        teamValidator.validateCanDisbandTeam(team.getId());
+
+
+        // teamMember, teamJoinRequest 먼저삭제 ( 하위요소니까. )
+        teamMemberRepository.deleteAllByTeamId(team.getId());
+        teamJoinRequestRepository.deleteAllByTeamId(team.getId());
+
+        // 해당 팀 삭제
+        teamRepository.deleteById(team.getId());
     }
 
 

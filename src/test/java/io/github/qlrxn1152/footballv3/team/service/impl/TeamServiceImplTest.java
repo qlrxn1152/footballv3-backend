@@ -4,6 +4,7 @@ import io.github.qlrxn1152.footballv3.auth.service.AuthService;
 import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.dto.request.MemberCreateRequest;
 import io.github.qlrxn1152.footballv3.member.dto.response.MemberCreateResponse;
+import io.github.qlrxn1152.footballv3.member.exception.exceptions.NotFoundMemberException;
 import io.github.qlrxn1152.footballv3.member.repository.MemberRepository;
 import io.github.qlrxn1152.footballv3.member.service.MemberService;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
@@ -18,6 +19,7 @@ import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.dto.response.TeamJoinRequestResponse;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.NotSameTeamException;
+import io.github.qlrxn1152.footballv3.teamjoinrequest.repository.TeamJoinRequestRepository;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.exception.exceptions.AlreadyJoinedTeamException;
@@ -56,6 +58,7 @@ class TeamServiceImplTest {
     @Autowired private TeamRepository teamRepository;
     @Autowired private TeamMemberRepository teamMemberRepository;
     @Autowired private MemberRepository  memberRepository;
+    @Autowired private TeamJoinRequestRepository teamJoinRequestRepository;
 
     @Autowired private EntityManagerFactory emf;
     @Autowired private EntityManager em;
@@ -399,9 +402,166 @@ class TeamServiceImplTest {
         assertThatThrownBy(() -> teamJoinRequestService.getJoinRequests(team.getTeamId(), oldLeaderMember.getMemberId()))
                 .isInstanceOf(NotTeamLeaderException.class)
                 .hasMessage("팀장이 아닙니다.");
-
     }
 
+    @Test
+    @DisplayName(value = "팀 인원이 1명뿐인 팀장은 해당팀을 해체할 수 있다.")
+    void disbandTeam() throws Exception {
+        // given
+        MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
+        teamJoinRequestService.createJoinRequest(team.getTeamId(), memberA.getMemberId());
+
+        // when
+        teamService.disbandTeam(team.getTeamId(), leaderMember.getMemberId());
+
+        // then
+        assertThat(teamMemberRepository.existsByMemberId(leaderMember.getMemberId())).isFalse();
+        assertThat(teamJoinRequestRepository.findAllByTeamId(team.getTeamId())).isEmpty();
+        assertThat(memberRepository.findById(leaderMember.getMemberId()).get().getId()).isEqualTo(leaderMember.getMemberId());
+        assertThat(teamMemberRepository.findAllByTeamIdWithMember(team.getTeamId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName(value = "팀장이 아닌 회원은 팀을 해체할 수 없다.")
+    void disbandTeam_fail_notTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), memberA.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), leaderMember.getMemberId(), joinRequest.getRequestId());
+
+        // when && then
+        assertThat(teamMemberRepository.existsByMemberId(leaderMember.getMemberId())).isTrue();
+        assertThat(teamMemberRepository.findAllByTeamIdWithMember(team.getTeamId())).isNotEmpty();
+
+        assertThatThrownBy(() -> teamService.disbandTeam(team.getTeamId(), memberA.getMemberId()))
+                .isInstanceOf(NotTeamLeaderException.class)
+                .hasMessage("팀장이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "존재하지 않는 팀은 해체할 수 없다.")
+    void disbandTeam_fail_notFoundTeam() throws Exception {
+        // given
+        MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), memberA.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), leaderMember.getMemberId(), joinRequest.getRequestId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.disbandTeam(999L, leaderMember.getMemberId()))
+                .isInstanceOf(NotFoundTeamException.class)
+                .hasMessage("팀 조회 실패");
+    }
+
+    @Test
+    @DisplayName(value = "존재하지 않는 회원은 해체할 수 없다.")
+    void disbandTeam_fail_notFoundMember() throws Exception {
+        // given
+        MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), memberA.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), leaderMember.getMemberId(), joinRequest.getRequestId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.disbandTeam(team.getTeamId(), 999L))
+                .isInstanceOf(NotFoundMemberException.class)
+                .hasMessage("멤버 조회 실패");
+    }
+
+    @Test
+    @DisplayName(value = "한개의 팀을 삭제한다고해서, 다른팀에는 영향을 미치지않는다.")
+    void disbandTeam_keepOtherTeam() throws Exception {
+        // given
+        MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
+        MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), memberA.getMemberId());
+
+        // when
+        teamService.disbandTeam(team.getTeamId(), leaderMember.getMemberId()); // team -> 삭제
+
+        // then
+        assertThat(teamMemberRepository.existsByMemberId(leaderMember.getMemberId())).isFalse();
+        assertThat(memberRepository.findById(leaderMember.getMemberId()).get().getId()).isEqualTo(leaderMember.getMemberId());
+        assertThat(teamMemberRepository.findAllByTeamIdWithMember(team.getTeamId())).isEmpty();
+
+        assertThat(teamMemberRepository.existsByMemberId(memberA.getMemberId())).isTrue();
+        assertThat(memberRepository.findById(memberA.getMemberId()).get().getId()).isEqualTo(memberA.getMemberId());
+        assertThat(teamMemberRepository.findAllByTeamIdWithMember(teamB.getTeamId())).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName(value = "팀장을 위임 한 이후에는, 새로운 팀장만 팀 해체를 할 수 있다.")
+    void disbandTeam_fail_afterTransferLeader() throws Exception {
+        // given
+        MemberCreateResponse oldLeader = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
+        MemberCreateResponse newLeader = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeader.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeader.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeader.getMemberId(), joinRequest.getRequestId());
+        teamService.transferTeamLeader(team.getTeamId(), oldLeader.getMemberId(), newLeader.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.disbandTeam(team.getTeamId(), oldLeader.getMemberId()))
+                .isInstanceOf(NotTeamLeaderException.class)
+                .hasMessage("팀장이 아닙니다.");
+
+        teamMemberService.leaveTeam(team.getTeamId(), oldLeader.getMemberId());
+
+        assertThatCode(() -> teamService.disbandTeam(team.getTeamId(), newLeader.getMemberId()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName(value = "팀 해체 이후에는, 다시 팀을 만들 수 있다.")
+    void disbandTeam_fail_afterTransferLeader_newCreateTeam() throws Exception {
+        // given
+        MemberCreateResponse oldLeader = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
+        MemberCreateResponse newLeader = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeader.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeader.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeader.getMemberId(), joinRequest.getRequestId());
+        teamService.transferTeamLeader(team.getTeamId(), oldLeader.getMemberId(), newLeader.getMemberId());
+        teamMemberService.leaveTeam(team.getTeamId(), oldLeader.getMemberId());
+        teamService.disbandTeam(team.getTeamId(), newLeader.getMemberId());
+
+        // when && then
+        assertThatCode(() -> teamService.createTeam(new TeamCreateRequest("teamB"), newLeader.getMemberId())).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName(value = "팀 해체 이후에는, 새로 만든팀에 가입신청을 넣을 수 있어야한다.")
+    void disbandTeam_fail_afterTransferLeader_newCreateTeam_joinRequest() throws Exception {
+        // given
+        MemberCreateResponse oldLeader = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
+        MemberCreateResponse newLeader = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
+        MemberCreateResponse memberB = memberService.signup(new MemberCreateRequest("memberB", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeader.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeader.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeader.getMemberId(), joinRequest.getRequestId());
+        teamService.transferTeamLeader(team.getTeamId(), oldLeader.getMemberId(), newLeader.getMemberId());
+        teamMemberService.leaveTeam(team.getTeamId(), oldLeader.getMemberId());
+        teamService.disbandTeam(team.getTeamId(), newLeader.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), newLeader.getMemberId());
+
+        // when && then
+        assertThatCode(() -> teamJoinRequestService.createJoinRequest(teamB.getTeamId(), memberB.getMemberId())).doesNotThrowAnyException();
+        assertThat(teamJoinRequestRepository.findByTeamIdAndMemberId(teamB.getTeamId(), memberB.getMemberId())).isNotEmpty();
+    }
 
 
 }

@@ -19,5 +19,7 @@ public interface TeamService {
 
     TeamLeaderTransferResponse transferTeamLeader(Long teamId, Long loginMemberId, Long newLeaderMemberId);
 
+    void disbandTeam(Long teamId, Long loginMemberId);
+
 
 }

@@ -53,4 +53,14 @@ public class TeamController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @DeleteMapping("/api/teams/{teamId}")
+    public ResponseEntity<Void> disbandTeam(@PathVariable Long teamId, @AuthenticationPrincipal Jwt jwt) {
+        teamService.disbandTeam(teamId, Long.valueOf(jwt.getSubject()));
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+
+
+
 }
