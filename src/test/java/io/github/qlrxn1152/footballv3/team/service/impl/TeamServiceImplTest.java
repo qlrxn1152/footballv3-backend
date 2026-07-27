@@ -10,10 +10,8 @@ import io.github.qlrxn1152.footballv3.member.service.MemberService;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.domain.TeamRole;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamDetailResponse;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamLeaderTransferResponse;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
+import io.github.qlrxn1152.footballv3.team.dto.request.TeamNameChangeRequest;
+import io.github.qlrxn1152.footballv3.team.dto.response.*;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.*;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
@@ -561,6 +559,161 @@ class TeamServiceImplTest {
         // when && then
         assertThatCode(() -> teamJoinRequestService.createJoinRequest(teamB.getTeamId(), memberB.getMemberId())).doesNotThrowAnyException();
         assertThat(teamJoinRequestRepository.findByTeamIdAndMemberId(teamB.getTeamId(), memberB.getMemberId())).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName(value = "팀장은 팀 이름을 변경할 수 있다.")
+    void changeTeamName() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        // when
+        TeamNameChangeResponse response = teamService.changeTeamName(team.getTeamId(), leader.getMemberId(), new TeamNameChangeRequest("teamB"));
+
+        // then
+        assertThat(teamRepository.findById(team.getTeamId()).get().getTeamName()).isEqualTo("teamB");
+        assertThat(response.getOldTeamName()).isEqualTo("teamA");
+        assertThat(response.getNewTeamName()).isEqualTo("teamB");
+    }
+
+    @Test
+    @DisplayName(value = "팀 이름을 변경할 때 앞뒤 공백을 제거한다.")
+    void changeTeamName_strip() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        // when
+        TeamNameChangeResponse response = teamService.changeTeamName(team.getTeamId(), leader.getMemberId(), new TeamNameChangeRequest("    teamB  "));
+
+        // then
+        assertThat(teamRepository.findById(team.getTeamId()).get().getTeamName()).isEqualTo("teamB");
+        assertThat(response.getOldTeamName()).isEqualTo("teamA");
+        assertThat(response.getNewTeamName()).isEqualTo("teamB");
+    }
+
+    @Test
+    @DisplayName(value = "팀장이 아닌 해당 팀 회원은 팀 이름 변경에 실패해야한다.")
+    void changeTeamName_fail_notTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), member.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), leader.getMemberId(), joinRequest.getRequestId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), member.getMemberId(), new TeamNameChangeRequest("teamB")))
+                .isInstanceOf(NotTeamLeaderException.class)
+                .hasMessage("팀장이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "해당팀에 속하지 않는 회원은 팀 이름 변경에 실패해야한다.")
+    void changeTeamName_fail_notTheTeamJoined() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), member.getMemberId(), new TeamNameChangeRequest("teamB")))
+                .isInstanceOf(NotJoinedTeamException.class)
+                .hasMessage("팀에 속한 회원이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "다른팀 팀장은 팀 이름 변경에 실패해야한다.")
+    void changeTeamName_fail_notTheTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        teamService.createTeam(new TeamCreateRequest("teamB"), member.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), member.getMemberId(), new TeamNameChangeRequest("teamB")))
+                .isInstanceOf(NotSameTeamException.class)
+                .hasMessage("해당팀이 아닙니다.");
+    }
+
+    @Test
+    @DisplayName(value = "현재 팀 이름과 같은이름으로 변경에 실패해야한다.")
+    void changeTeamName_fail_sameName() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), leader.getMemberId(), new TeamNameChangeRequest("teamA")))
+                .isInstanceOf(SameTeamNameException.class)
+                .hasMessage("현재 팀 이름과 동일합니다.");
+    }
+
+    @Test
+    @DisplayName(value = "이미 존재하는 팀 이름에는 변경에 실패해야한다.")
+    void changeTeamName_fail_duplicateTeamName() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        teamService.createTeam(new TeamCreateRequest("teamB"), member.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), leader.getMemberId(), new TeamNameChangeRequest("teamB")))
+                .isInstanceOf(DuplicateTeamNameException.class)
+                .hasMessage("팀 이름 중복");
+    }
+
+    @Test
+    @DisplayName(value = "존재하지 않는 팀")
+    void changeTeamName_fail_notFoundTeam() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.changeTeamName(1234L, leader.getMemberId(), new TeamNameChangeRequest("teamB")))
+                .isInstanceOf(NotFoundTeamException.class)
+                .hasMessage("팀 조회 실패");
+    }
+
+    @Test
+    @DisplayName(value = "존재하지 않는 멤버")
+    void changeTeamName_fail_notFoundMember() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), 999L, new TeamNameChangeRequest("teamB")))
+                .isInstanceOf(NotFoundMemberException.class)
+                .hasMessage("멤버 조회 실패");
+    }
+
+    @Test
+    @DisplayName(value = "팀장 변경 이후 권한 반영")
+    void changeTeamName_transferTeamLeader() throws Exception {
+        // given
+        MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
+        MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
+
+        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), member.getMemberId());
+        teamJoinRequestService.approveJoinRequest(team.getTeamId(), leader.getMemberId(), joinRequest.getRequestId());
+        teamService.transferTeamLeader(team.getTeamId(), leader.getMemberId(), member.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), leader.getMemberId(), new TeamNameChangeRequest("teamB")))
+                .isInstanceOf(NotTeamLeaderException.class)
+                .hasMessage("팀장이 아닙니다.");
+
+        assertThatCode(() -> teamService.changeTeamName(team.getTeamId(), member.getMemberId(), new TeamNameChangeRequest("teamB"))).doesNotThrowAnyException();
     }
 
 

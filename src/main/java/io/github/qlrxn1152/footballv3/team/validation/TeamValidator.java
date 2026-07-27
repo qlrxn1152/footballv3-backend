@@ -60,6 +60,12 @@ public class TeamValidator {
 
     }
 
+    public void validateSameTeamName(String oldTeamName, String newTeamName) {
+        if (oldTeamName.equals(newTeamName)) {
+            throw new SameTeamNameException();
+        }
+    }
+
 
 
 

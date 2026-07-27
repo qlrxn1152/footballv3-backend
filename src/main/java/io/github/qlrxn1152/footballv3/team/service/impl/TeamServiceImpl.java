@@ -4,6 +4,7 @@ import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
+import io.github.qlrxn1152.footballv3.team.dto.request.TeamNameChangeRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.*;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.CanNotDisbandTeamException;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.SameTeamLeaderException;
@@ -116,6 +117,31 @@ public class TeamServiceImpl implements TeamService {
 
         // 해당 팀 삭제
         teamRepository.deleteById(team.getId());
+    }
+
+    @Override
+    public TeamNameChangeResponse changeTeamName(Long teamId, Long loginMemberId, TeamNameChangeRequest request) {
+        Team team = teamValidator.validateExistTeamAndReturn(teamId);
+        Member leaderMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
+
+        String previousTeamName = team.getTeamName();
+        String normalizedTeamName = request.getNewTeamName().strip();
+
+        // 해당팀에 속한거 맞음?
+        TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(leaderMember.getId());
+        teamMemberValidator.validateBelongsToTeam(team.getId(), teamMember);
+
+        teamValidator.validateCheckTeamLeader(team, leaderMember.getId());
+
+
+        teamValidator.validateTeamNameLength(normalizedTeamName);
+        teamValidator.validateSameTeamName(team.getTeamName(), normalizedTeamName);
+        teamValidator.validateExistsTeamName(normalizedTeamName);
+
+        team.changeTeamName(normalizedTeamName);
+
+        return TeamNameChangeResponse.of(team, previousTeamName);
+
     }
 
 

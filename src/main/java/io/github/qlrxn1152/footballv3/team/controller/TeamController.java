@@ -2,10 +2,8 @@ package io.github.qlrxn1152.footballv3.team.controller;
 
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamLeaderTransferRequest;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamDetailResponse;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamLeaderTransferResponse;
-import io.github.qlrxn1152.footballv3.team.dto.response.TeamListResponse;
+import io.github.qlrxn1152.footballv3.team.dto.request.TeamNameChangeRequest;
+import io.github.qlrxn1152.footballv3.team.dto.response.*;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -60,7 +58,10 @@ public class TeamController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
+    @PatchMapping("/api/teams/{teamId}/name")
+    public ResponseEntity<TeamNameChangeResponse> changeTeamName(Long teamId, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody TeamNameChangeRequest request) {
+        TeamNameChangeResponse response = teamService.changeTeamName(teamId, Long.valueOf(jwt.getSubject()), request);
 
-
-
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
 }
