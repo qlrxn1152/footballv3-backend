@@ -56,6 +56,7 @@ public class TeamMatchServiceImpl implements TeamMatchService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TeamMatchPendingResponse> getPendingMatches() {
         // 모든 유저가 요청할 수 있음.
         return teamMatchRepository.findAllByStatusWithHomeTeam(TeamMatchStatus.PENDING)
@@ -65,6 +66,7 @@ public class TeamMatchServiceImpl implements TeamMatchService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TeamMatchMatchedResponse> getMatchedMatches() {
         return teamMatchRepository.findAllByStatusWithTeams(TeamMatchStatus.MATCHED)
                 .stream()
@@ -87,9 +89,9 @@ public class TeamMatchServiceImpl implements TeamMatchService {
         teamMatch.acceptMatch(awayTeam);
 
         return TeamMatchAcceptResponse.of(teamMatch);
-
-
     }
+
+
 
 
 }
