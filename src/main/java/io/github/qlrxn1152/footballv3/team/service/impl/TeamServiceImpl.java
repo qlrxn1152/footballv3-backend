@@ -12,6 +12,7 @@ import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.repository.TeamJoinRequestRepository;
+import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import io.github.qlrxn1152.footballv3.teammember.validation.TeamMemberValidator;
@@ -31,6 +32,7 @@ public class TeamServiceImpl implements TeamService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamJoinRequestRepository teamJoinRequestRepository;
+    private final TeamMatchRepository teamMatchRepository;
 
     private final MemberValidator memberValidator;
     private final TeamValidator teamValidator;
@@ -111,9 +113,10 @@ public class TeamServiceImpl implements TeamService {
         teamValidator.validateCanDisbandTeam(team.getId());
 
 
-        // teamMember, teamJoinRequest 먼저삭제 ( 하위요소니까. )
+        // teamMember, teamJoinRequest, teamMatch 먼저삭제 ( 하위요소니까. )
         teamMemberRepository.deleteAllByTeamId(team.getId());
         teamJoinRequestRepository.deleteAllByTeamId(team.getId());
+        teamMatchRepository.deleteAllByHomeTeamId(team.getId());
 
         // 해당 팀 삭제
         teamRepository.deleteById(team.getId());
