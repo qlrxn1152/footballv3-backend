@@ -4,8 +4,11 @@ import io.github.qlrxn1152.footballv3.member.dto.request.MemberCreateRequest;
 import io.github.qlrxn1152.footballv3.member.dto.response.MemberCreateResponse;
 import io.github.qlrxn1152.footballv3.member.exception.exceptions.NotFoundMemberException;
 import io.github.qlrxn1152.footballv3.member.service.MemberService;
+import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.dto.request.TeamCreateRequest;
 import io.github.qlrxn1152.footballv3.team.dto.response.TeamCreateResponse;
+import io.github.qlrxn1152.footballv3.team.exception.exceptions.NotTeamLeaderException;
+import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.exception.exceptions.NotSameTeamException;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestService;
@@ -53,6 +56,7 @@ class TeamMatchResultServiceImplTest {
 
     @Autowired private TeamMatchRepository teamMatchRepository;
     @Autowired private TeamMatchResultRepository teamMatchResultRepository;
+    @Autowired private TeamRepository teamRepository;
 
     @Autowired private EntityManager em;
     @Autowired private EntityManagerFactory emf;
@@ -275,4 +279,205 @@ class TeamMatchResultServiceImplTest {
                 .isInstanceOf(NotFoundMemberException.class)
                 .hasMessage("멤버 조회 실패");
     }
+
+    @Test
+    @DisplayName(value = "홈팀이 승리할경우, 홈팀은 점수 +30, 원정팀은 -30이 반영된다.")
+    void registerMatchResult_homeWin_rating() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+
+        // when
+        TeamMatchResultResponse response = teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(2, 1)); // 홈팀 승리
+        TeamMatchResult teamMatchResult = teamMatchResultRepository.findByTeamMatchId(match.getMatchId()).get();
+        TeamMatch teamMatch = teamMatchRepository.findById(match.getMatchId()).get();
+        Team teamAEntity = teamRepository.findById(teamA.getTeamId()).get();
+        Team teamBEntity = teamRepository.findById(teamB.getTeamId()).get();
+
+        // then
+
+        assertThat(teamMatchResult.getTeamMatch().getId()).isEqualTo(match.getMatchId());
+        assertThat(teamMatchResult.getTeamMatch().getId()).isEqualTo(response.getMatchId());
+        assertThat(teamMatchResult.getWinnerTeam().getId()).isEqualTo(teamA.getTeamId());
+        assertThat(teamMatchResult.getHomeScore()).isEqualTo(2);
+        assertThat(teamMatchResult.getAwayScore()).isEqualTo(1);
+
+        assertThat(teamAEntity.getRating()).isEqualTo(1530);
+        assertThat(teamBEntity.getRating()).isEqualTo(1470);
+
+        assertThat(teamMatch.getStatus()).isEqualTo(TeamMatchStatus.COMPLETED);
+        assertThat(teamMatch.getAwayTeam().getId()).isEqualTo(teamB.getTeamId());
+    }
+
+    @Test
+    @DisplayName(value = "원정팀이 승리할경우, 원정팀은 점수 +30, 홈팀은 -30이 반영된다.")
+    void registerMatchResult_awayWin_rating() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+
+        // when
+        TeamMatchResultResponse response = teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(2, 4)); // 원정팀 승리
+        TeamMatchResult teamMatchResult = teamMatchResultRepository.findByTeamMatchId(match.getMatchId()).get();
+        TeamMatch teamMatch = teamMatchRepository.findById(match.getMatchId()).get();
+        Team teamAEntity = teamRepository.findById(teamA.getTeamId()).get();
+        Team teamBEntity = teamRepository.findById(teamB.getTeamId()).get();
+
+        // then
+
+        assertThat(teamMatchResult.getTeamMatch().getId()).isEqualTo(match.getMatchId());
+        assertThat(teamMatchResult.getTeamMatch().getId()).isEqualTo(response.getMatchId());
+        assertThat(teamMatchResult.getWinnerTeam().getId()).isEqualTo(teamB.getTeamId());
+        assertThat(teamMatchResult.getHomeScore()).isEqualTo(2);
+        assertThat(teamMatchResult.getAwayScore()).isEqualTo(4);
+
+        assertThat(teamAEntity.getRating()).isEqualTo(1470);
+        assertThat(teamBEntity.getRating()).isEqualTo(1530);
+
+        assertThat(teamMatch.getStatus()).isEqualTo(TeamMatchStatus.COMPLETED);
+        assertThat(teamMatch.getAwayTeam().getId()).isEqualTo(teamB.getTeamId());
+    }
+
+
+    @Test
+    @DisplayName(value = "무승부인 경우에는, 양팀 모두 10점을 획득한다.")
+    void registerMatchResult_draw_rating() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+
+        // when
+        teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(2, 2)); // 무승부
+        teamMatchResultRepository.findByTeamMatchId(match.getMatchId()).get();
+        teamMatchRepository.findById(match.getMatchId()).get();
+        Team teamAEntity = teamRepository.findById(teamA.getTeamId()).get();
+        Team teamBEntity = teamRepository.findById(teamB.getTeamId()).get();
+
+        // then
+        assertThat(teamAEntity.getRating()).isEqualTo(1510);
+        assertThat(teamBEntity.getRating()).isEqualTo(1510);
+    }
+
+    @Test
+    @DisplayName(value = "무승부인 경우에는, 양팀 모두 10점을 획득한다. ( 0 : 0 )")
+    void registerMatchResult_zeroDraw_rating() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+
+        // when
+        teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(0, 0)); // 무승부
+        teamMatchResultRepository.findByTeamMatchId(match.getMatchId()).get();
+        teamMatchRepository.findById(match.getMatchId()).get();
+        Team teamAEntity = teamRepository.findById(teamA.getTeamId()).get();
+        Team teamBEntity = teamRepository.findById(teamB.getTeamId()).get();
+
+        // then
+        assertThat(teamAEntity.getRating()).isEqualTo(1510);
+        assertThat(teamBEntity.getRating()).isEqualTo(1510);
+    }
+
+    @Test
+    @DisplayName(value = "잘못된 점수로 매치결과를 등록하면, 매치결과등록에 실패해야하고 점수도 반영되어선 안된다.")
+    void registerMatchResult_fail_negativeScore_rating() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(-2, 2)))
+                .isInstanceOf(InvalidTeamMatchScoreException.class)
+                .hasMessage("경기 점수는 0 이상이어야 합니다.");
+
+        assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1500);
+        assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1500);
+    }
+
+    @Test
+    @DisplayName(value = "매치결과를 등록하는데에 실패하면, 매치결과등록에 실패해야하고 점수도 반영되어선 안된다.")
+    void registerMatchResult_fail_notTeamLeader_rating() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+
+        // when && then
+        assertThatThrownBy(() -> teamMatchResultService.registerMatchResult(match.getMatchId(), leaderB.getMemberId(), new TeamMatchResultCreateRequest(1, 2)))
+                .isInstanceOf(NotSameTeamException.class)
+                .hasMessage("해당팀이 아닙니다.");
+
+        assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1500);
+        assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1500);
+    }
+
+    @Test
+    @DisplayName(value = "이미 매치결과가 입력된 매치에 다시 결과를 입력해도, 결과가 반영되지 않아야한다.")
+    void registerMatchResult_fail_duplicate_rating() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(1, 0));
+
+        // when && then
+        assertThatThrownBy(() -> teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 2)))
+                .isInstanceOf(NotMatchedTeamMatchException.class)
+                .hasMessage("진행 중인 매치가 아닙니다.");
+
+        assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1530);
+        assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1470);
+    }
+
+    @Test
+    @DisplayName(value = "레이팅은 초기화되지않고, 계속해서 누적되어야한다.")
+    void registerMatchResult_rating_accumulate() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+
+        // 1번째 경기
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(1, 0));
+
+        // 2번째 경기
+        TeamMatchCreateResponse reMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(reMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(reMatch.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 0));
+
+        // when && then
+        assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1560);
+        assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1440);
+    }
+
+
+
 }

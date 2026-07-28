@@ -53,6 +53,20 @@ public class Team {
         this.teamName = newTeamName;
     }
 
+    public void winMatch() {
+        this.rating += 30;
+    }
+
+    public void loseMatch() {
+        this.rating -= 30;
+    }
+
+    public void drawMatch() {
+        this.rating += 10;
+    }
+
+
+
 
 
 

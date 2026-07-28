@@ -69,4 +69,21 @@ public class TeamMatch {
         this.completedAt = LocalDateTime.now();
     }
 
+    public void applyRating(int homeScore, int awayScore) {
+        if (homeScore > awayScore) {
+            this.homeTeam.winMatch();
+            this.awayTeam.loseMatch();
+            return;
+        }
+
+        else if ( homeScore < awayScore) {
+            this.homeTeam.loseMatch();
+            this.awayTeam.winMatch();
+            return;
+        }
+
+        this.homeTeam.drawMatch();
+        this.awayTeam.drawMatch();
+    }
+
 }

@@ -52,6 +52,7 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         teamMatchResultValidator.validateMatchResultScore(request.getHomeScore(), request.getAwayScore());
 
         teamMatch.completeMatch();
+        teamMatch.applyRating(request.getHomeScore(), request.getAwayScore()); // Rating 반영.
         TeamMatchResult matchResult = teamMatchResultRepository.save(TeamMatchResult.createMatchResult(teamMatch, request.getHomeScore(), request.getAwayScore()));
 
         return TeamMatchResultResponse.of(matchResult);
