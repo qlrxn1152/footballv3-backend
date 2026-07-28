@@ -36,7 +36,6 @@ public class TeamMatchServiceImpl implements TeamMatchService {
     private final MemberValidator memberValidator;
     private final TeamMatchValidator teamMatchValidator;
 
-
     @Override
     public TeamMatchCreateResponse registerMatch(Long homeTeamId, Long loginMemberId, TeamMatchCreateRequest request) {
         Team homeTeam = teamValidator.validateExistTeamAndReturn(homeTeamId);
@@ -90,6 +89,8 @@ public class TeamMatchServiceImpl implements TeamMatchService {
 
         return TeamMatchAcceptResponse.of(teamMatch);
     }
+
+
 
 
 

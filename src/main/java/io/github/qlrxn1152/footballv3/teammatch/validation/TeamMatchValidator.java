@@ -35,10 +35,21 @@ public class TeamMatchValidator {
                 .orElseThrow(NotFoundTeamMatchException::new);
     }
 
-    // PENDING 인 매치가 맞는지, awayTeam, homeTeam 이 다른지
+    public TeamMatch validateExistTeamMatchAndReturnWithTeams(Long matchId) {
+        return teamMatchRepository.findByMatchIdWithTeams(matchId)
+                .orElseThrow(NotFoundTeamMatchException::new);
+    }
+
+    // PENDING 인 매치가 맞는지,
     public void validatePendingStatus(TeamMatch teamMatch) {
         if (teamMatch.getStatus() != TeamMatchStatus.PENDING) {
             throw new NotPendingTeamMatchException();
+        }
+    }
+
+    public void validateMatchedStatus(TeamMatch teamMatch) {
+        if (teamMatch.getStatus() != TeamMatchStatus.MATCHED) {
+            throw new NotMatchedTeamMatchException();
         }
     }
 
@@ -46,6 +57,5 @@ public class TeamMatchValidator {
         if ( teamMatch.getHomeTeam().getId().equals(awayTeamId)) {
             throw new SameTeamMatchAcceptException();
         }
-
     }
 }

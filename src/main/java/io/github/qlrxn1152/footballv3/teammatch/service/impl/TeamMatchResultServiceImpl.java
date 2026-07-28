@@ -1,0 +1,61 @@
+package io.github.qlrxn1152.footballv3.teammatch.service.impl;
+
+import io.github.qlrxn1152.footballv3.member.domain.Member;
+import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
+import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
+import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatch;
+import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchResult;
+import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchResultCreateRequest;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchResultResponse;
+import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchResultRepository;
+import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchResultService;
+import io.github.qlrxn1152.footballv3.teammatch.validation.TeamMatchResultValidator;
+import io.github.qlrxn1152.footballv3.teammatch.validation.TeamMatchValidator;
+import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
+import io.github.qlrxn1152.footballv3.teammember.validation.TeamMemberValidator;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Slf4j
+@Transactional
+@RequiredArgsConstructor
+public class TeamMatchResultServiceImpl implements TeamMatchResultService {
+
+    private final TeamMatchResultRepository teamMatchResultRepository;
+
+    private final TeamValidator teamValidator;
+    private final MemberValidator memberValidator;
+    private final TeamMemberValidator teamMemberValidator;
+    private final TeamMatchValidator teamMatchValidator;
+    private final TeamMatchResultValidator teamMatchResultValidator;
+
+    @Override
+    public TeamMatchResultResponse registerMatchResult(Long matchId, Long loginMemberId, TeamMatchResultCreateRequest request) {
+        TeamMatch teamMatch = teamMatchValidator.validateExistTeamMatchAndReturnWithTeams(matchId); // 매치조회
+        Member loginMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
+        TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(loginMember.getId());
+
+        // 해당매치가 MATCHED 인 상태가 맞는지
+        teamMatchValidator.validateMatchedStatus(teamMatch);
+
+        // 홈팀인원이 맞는지, 팀장이 맞는지
+        teamMemberValidator.validateBelongsToTeam(teamMatch.getHomeTeam().getId(), teamMember);
+        teamValidator.validateCheckTeamLeader(teamMatch.getHomeTeam(), loginMember.getId());
+
+        // 이미 동일한 매치의 매치결과가 등록되어져 있는건 아닌지
+        teamMatchResultValidator.validateResultNotExists(teamMatch.getId());
+
+        // 점수방식은 올바른 방식인지
+        teamMatchResultValidator.validateMatchResultScore(request.getHomeScore(), request.getAwayScore());
+
+        teamMatch.completeMatch();
+        TeamMatchResult matchResult = teamMatchResultRepository.save(TeamMatchResult.createMatchResult(teamMatch, request.getHomeScore(), request.getAwayScore()));
+
+        return TeamMatchResultResponse.of(matchResult);
+    }
+
+
+}

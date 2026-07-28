@@ -39,6 +39,9 @@ public class TeamMatch {
     @Column(name = "team_match_matched_at")
     private LocalDateTime matchedAt; // MATCHED 로 언제 변경이 된건지 확인할 수 있는
 
+    @Column(name = "team_match_completed_at")
+    private LocalDateTime completedAt;
+
     private TeamMatch(Team homeTeam, LocalDateTime playedAt) {
         this.homeTeam = homeTeam;
         this.playedAt = playedAt;
@@ -46,6 +49,9 @@ public class TeamMatch {
         this.awayTeam = null;
         this.status = TeamMatchStatus.PENDING;
         this.createdAt = LocalDateTime.now();
+
+        this.matchedAt = null;
+        this.completedAt = null;
     }
 
     public static TeamMatch register(Team homeTeam, LocalDateTime playedAt) {
@@ -56,6 +62,11 @@ public class TeamMatch {
         this.awayTeam = awayTeam;
         this.status = TeamMatchStatus.MATCHED;
         this.matchedAt = LocalDateTime.now();
+    }
+
+    public void completeMatch() {
+        this.status = TeamMatchStatus.COMPLETED;
+        this.completedAt = LocalDateTime.now();
     }
 
 }

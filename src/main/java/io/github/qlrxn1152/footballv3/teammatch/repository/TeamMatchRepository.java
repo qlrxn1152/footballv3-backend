@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface TeamMatchRepository extends JpaRepository<TeamMatch, Long> {
 
@@ -26,4 +27,7 @@ public interface TeamMatchRepository extends JpaRepository<TeamMatch, Long> {
 
     @Query("select tm from TeamMatch tm join fetch tm.homeTeam join fetch tm.awayTeam where tm.status = :status order by tm.playedAt asc, tm.createdAt asc")
     List<TeamMatch> findAllByStatusWithTeams(@Param("status") TeamMatchStatus status);
+
+    @Query("select tm from TeamMatch tm join fetch tm.homeTeam left join fetch tm.awayTeam where tm.id = :matchId")
+    Optional<TeamMatch> findByMatchIdWithTeams(@Param("matchId") Long matchId);
 }

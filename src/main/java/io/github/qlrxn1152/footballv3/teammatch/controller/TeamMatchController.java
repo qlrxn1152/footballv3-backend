@@ -2,10 +2,9 @@ package io.github.qlrxn1152.footballv3.teammatch.controller;
 
 import com.nimbusds.jwt.JWT;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchAcceptResponse;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCreateResponse;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchMatchedResponse;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchPendingResponse;
+import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchResultCreateRequest;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.*;
+import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchResultService;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +23,7 @@ import java.util.List;
 public class TeamMatchController {
 
     private final TeamMatchService teamMatchService;
+    private final TeamMatchResultService teamMatchResultService;
 
     @PostMapping("/api/teams/{teamId}/matches")
     public ResponseEntity<TeamMatchCreateResponse> registerMatch(@PathVariable Long teamId, @Valid @RequestBody TeamMatchCreateRequest request, @AuthenticationPrincipal Jwt jwt) {
@@ -53,5 +53,11 @@ public class TeamMatchController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @PostMapping("/api/matches/{matchId}/result")
+    public ResponseEntity<TeamMatchResultResponse> registerMatchResult(@PathVariable Long matchId, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody TeamMatchResultCreateRequest request) {
+        TeamMatchResultResponse response = teamMatchResultService.registerMatchResult(matchId, Long.valueOf(jwt.getSubject()), request);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
 
 }
