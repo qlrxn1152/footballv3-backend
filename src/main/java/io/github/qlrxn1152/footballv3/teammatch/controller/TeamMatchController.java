@@ -4,6 +4,7 @@ import com.nimbusds.jwt.JWT;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchAcceptResponse;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCreateResponse;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchMatchedResponse;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchPendingResponse;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
 import jakarta.validation.Valid;
@@ -38,11 +39,19 @@ public class TeamMatchController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @GetMapping("/api/matches/matched")
+    public ResponseEntity<List<TeamMatchMatchedResponse>> getMatchedMatches() {
+        List<TeamMatchMatchedResponse> response = teamMatchService.getMatchedMatches();
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
     @PostMapping("/api/teams/{awayTeamId}/matches/{matchId}/accept")
     public ResponseEntity<TeamMatchAcceptResponse> acceptMatch(@PathVariable Long matchId, @PathVariable Long awayTeamId, @AuthenticationPrincipal Jwt jwt) {
         TeamMatchAcceptResponse response = teamMatchService.acceptMatch(matchId, awayTeamId, Long.valueOf(jwt.getSubject()));
 
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
+
 
 }

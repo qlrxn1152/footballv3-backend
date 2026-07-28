@@ -9,6 +9,7 @@ import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchAcceptResponse;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCreateResponse;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchMatchedResponse;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchPendingResponse;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
@@ -60,6 +61,14 @@ public class TeamMatchServiceImpl implements TeamMatchService {
         return teamMatchRepository.findAllByStatusWithHomeTeam(TeamMatchStatus.PENDING)
                 .stream()
                 .map(TeamMatchPendingResponse::of)
+                .toList();
+    }
+
+    @Override
+    public List<TeamMatchMatchedResponse> getMatchedMatches() {
+        return teamMatchRepository.findAllByStatusWithHomeTeam(TeamMatchStatus.MATCHED)
+                .stream()
+                .map(TeamMatchMatchedResponse::of)
                 .toList();
     }
 

@@ -24,4 +24,6 @@ public interface TeamMatchRepository extends JpaRepository<TeamMatch, Long> {
     @Query("select tm from TeamMatch tm join fetch tm.homeTeam where tm.status = :status order by tm.playedAt asc, tm.createdAt asc")
     List<TeamMatch> findAllByStatusWithHomeTeam(@Param("status") TeamMatchStatus status);
 
+    @Query("select tm from TeamMatch tm join fetch tm.homeTeam join fetch tm.awayTeam where tm.status = :status order by tm.playedAt asc, tm.createdAt asc")
+    List<TeamMatch> findAllByStatusWithTeams(@Param("status") TeamMatchStatus status);
 }
