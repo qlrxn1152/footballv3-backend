@@ -2,13 +2,16 @@ package io.github.qlrxn1152.footballv3.teammatch.domain;
 
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @Table(name = "team_matches")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TeamMatch {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
