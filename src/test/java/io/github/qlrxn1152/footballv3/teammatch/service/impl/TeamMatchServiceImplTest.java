@@ -15,10 +15,15 @@ import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatch;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCreateResponse;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchPendingResponse;
 import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.DuplicateMatchRegistrationException;
 import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.InvalidMatchPlatedAtException;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +32,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -41,6 +47,9 @@ class TeamMatchServiceImplTest {
     @Autowired private TeamJoinRequestService teamJoinRequestService;
 
     @Autowired private TeamMatchRepository teamMatchRepository;
+
+    @Autowired private EntityManager em;
+    @Autowired private EntityManagerFactory emf;
 
 
     private LocalDateTime teamMatchPlayedAt = LocalDateTime.of(3000, 1, 1, 1, 1);
@@ -205,6 +214,94 @@ class TeamMatchServiceImplTest {
         // then
         assertThat(teamMatchRepository.countByHomeTeamIdAndStatus(team.getTeamId(), TeamMatchStatus.PENDING)).isZero();
     }
+
+    @Test
+    @DisplayName(value = "여러팀의 PENDING 매치 조회할 수 있다.")
+    void getPendingMatches() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        teamMatchService.registerMatch(teamA.getTeamId(),  leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        teamMatchService.registerMatch(teamB.getTeamId(),  leaderB.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+
+        // when
+        List<TeamMatchPendingResponse> response = teamMatchService.getPendingMatches();
+
+        // then
+        assertThat(response.size()).isEqualTo(2);
+        assertThat(response).extracting(TeamMatchPendingResponse::getHomeTeamName).containsExactly("teamA", "teamB");
+        assertThat(response).allMatch(match -> match.getStatus() == TeamMatchStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName(value = "경기 시간이 가까운 순서로, 정렬된다.")
+    void getPendingMatches_orderby() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        teamMatchService.registerMatch(teamA.getTeamId(),  leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(2)));
+        teamMatchService.registerMatch(teamB.getTeamId(),  leaderB.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(3)));
+
+        // when
+        List<TeamMatchPendingResponse> response = teamMatchService.getPendingMatches();
+
+        // then
+        assertThat(response.size()).isEqualTo(2);
+        assertThat(response.get(0).getPlayedAt()).isEqualTo(teamMatchPlayedAt.plusDays(2));
+        assertThat(response.get(1).getPlayedAt()).isEqualTo(teamMatchPlayedAt.plusDays(3));
+    }
+
+    @Test
+    @DisplayName(value = "PENDING 매치가 존재하지않으면, 빈 데이터를 반환한다.")
+    void getPendingMatches_empty() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+
+        // when
+        List<TeamMatchPendingResponse> response = teamMatchService.getPendingMatches();
+
+        // then
+        assertThat(response).isEmpty();
+    }
+
+    @Test
+    @DisplayName(value = "N+1 문제가 발생하지않으며, 1번의 쿼리로 PENDING 매치들을 다 가지고온다. ( homeTeam 에 대한 정보도 같이 가지고옴 )")
+    void getPendingMatches_check_queryCount() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        teamMatchService.registerMatch(teamA.getTeamId(),  leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(2)));
+        teamMatchService.registerMatch(teamB.getTeamId(),  leaderB.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(3)));
+
+        em.flush();
+        em.clear();
+
+        SessionFactory sessionFactory = emf.unwrap(SessionFactory.class);
+        Statistics statistics = sessionFactory.getStatistics();
+
+        statistics.clear();
+
+        // when
+        teamMatchService.getPendingMatches();
+
+        long queryCount = statistics.getPrepareStatementCount();
+
+        // then
+        assertThat(queryCount).isEqualTo(1);
+
+    }
+
+
+
 
 
 

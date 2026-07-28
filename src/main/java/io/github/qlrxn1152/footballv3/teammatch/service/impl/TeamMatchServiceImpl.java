@@ -8,6 +8,7 @@ import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatch;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCreateResponse;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchPendingResponse;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
 import io.github.qlrxn1152.footballv3.teammatch.validation.TeamMatchValidator;
@@ -17,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Transactional
 @Service
@@ -47,6 +50,15 @@ public class TeamMatchServiceImpl implements TeamMatchService {
         TeamMatch savedTeamMatch = teamMatchRepository.save(TeamMatch.register(homeTeam, request.getPlayedAt()));
 
         return TeamMatchCreateResponse.of(savedTeamMatch);
+    }
+
+    @Override
+    public List<TeamMatchPendingResponse> getPendingMatches() {
+        // 모든 유저가 요청할 수 있음.
+        return teamMatchRepository.findAllByStatusWithHomeTeam(TeamMatchStatus.PENDING)
+                .stream()
+                .map(TeamMatchPendingResponse::of)
+                .toList();
     }
 
 
