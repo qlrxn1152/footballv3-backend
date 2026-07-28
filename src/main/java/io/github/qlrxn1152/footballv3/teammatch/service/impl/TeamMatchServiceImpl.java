@@ -66,7 +66,7 @@ public class TeamMatchServiceImpl implements TeamMatchService {
 
     @Override
     public List<TeamMatchMatchedResponse> getMatchedMatches() {
-        return teamMatchRepository.findAllByStatusWithHomeTeam(TeamMatchStatus.MATCHED)
+        return teamMatchRepository.findAllByStatusWithTeams(TeamMatchStatus.MATCHED)
                 .stream()
                 .map(TeamMatchMatchedResponse::of)
                 .toList();
