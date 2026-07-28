@@ -7,6 +7,7 @@ import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatch;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchAcceptResponse;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCreateResponse;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchPendingResponse;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
@@ -45,8 +46,9 @@ public class TeamMatchServiceImpl implements TeamMatchService {
         teamValidator.validateCheckTeamLeader(homeTeam, loginMember.getId());
 
         teamMatchValidator.validateFuturePlayedAt(request.getPlayedAt());
-        teamMatchValidator.validateDuplicateRegistration(homeTeam.getId(), TeamMatchStatus.PENDING);
+        teamMatchValidator.validateDuplicateMatchRegistration(homeTeam.getId(), TeamMatchStatus.PENDING); // PENDING 인 매치들이 이미 존재하는지 확인.
 
+        // MATCHED 를 가지고있어도, PENDING 매치는 등록할 수 있다.
         TeamMatch savedTeamMatch = teamMatchRepository.save(TeamMatch.register(homeTeam, request.getPlayedAt()));
 
         return TeamMatchCreateResponse.of(savedTeamMatch);
@@ -59,6 +61,25 @@ public class TeamMatchServiceImpl implements TeamMatchService {
                 .stream()
                 .map(TeamMatchPendingResponse::of)
                 .toList();
+    }
+
+    @Override
+    public TeamMatchAcceptResponse acceptMatch(Long matchId, Long awayTeamId, Long loginMemberId) {
+        TeamMatch teamMatch = teamMatchValidator.validateExistTeamMatchAndReturn(matchId);
+        Team awayTeam = teamValidator.validateExistTeamAndReturn(awayTeamId);
+        Member loginMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
+
+        TeamMember loginTeamMember = teamMemberValidator.validateExistTeamMemberAndReturn(loginMember.getId());
+        teamMemberValidator.validateBelongsToTeam(awayTeam.getId(), loginTeamMember);
+        teamValidator.validateCheckTeamLeader(awayTeam, loginMember.getId());
+        teamMatchValidator.validateDifferentTeam(teamMatch, awayTeam.getId());
+        teamMatchValidator.validatePendingStatus(teamMatch);
+
+        teamMatch.acceptMatch(awayTeam);
+
+        return TeamMatchAcceptResponse.of(teamMatch);
+
+
     }
 
 

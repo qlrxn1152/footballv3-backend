@@ -12,7 +12,9 @@ import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
 import io.github.qlrxn1152.footballv3.team.service.TeamService;
 import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
 import io.github.qlrxn1152.footballv3.teamjoinrequest.repository.TeamJoinRequestRepository;
+import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
+import io.github.qlrxn1152.footballv3.teammatch.validation.TeamMatchValidator;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import io.github.qlrxn1152.footballv3.teammember.validation.TeamMemberValidator;
@@ -37,6 +39,7 @@ public class TeamServiceImpl implements TeamService {
     private final MemberValidator memberValidator;
     private final TeamValidator teamValidator;
     private final TeamMemberValidator teamMemberValidator;
+    private final TeamMatchValidator teamMatchValidator;
 
     @Override
     public TeamCreateResponse createTeam(TeamCreateRequest request, Long memberId) {
@@ -112,11 +115,15 @@ public class TeamServiceImpl implements TeamService {
         // 인원이 팀장본인뿐인 1명인거 맞음?
         teamValidator.validateCanDisbandTeam(team.getId());
 
+        // 이미 MATCHED 상태인 매치를 가지고있는거아님?
+        teamValidator.validateCanDisBandMatchedTeam(team.getId());
+
 
         // teamMember, teamJoinRequest, teamMatch 먼저삭제 ( 하위요소니까. )
         teamMemberRepository.deleteAllByTeamId(team.getId());
         teamJoinRequestRepository.deleteAllByTeamId(team.getId());
         teamMatchRepository.deleteAllByHomeTeamId(team.getId());
+
 
         // 해당 팀 삭제
         teamRepository.deleteById(team.getId());

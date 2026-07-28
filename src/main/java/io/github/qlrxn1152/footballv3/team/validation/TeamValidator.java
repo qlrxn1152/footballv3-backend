@@ -3,6 +3,8 @@ package io.github.qlrxn1152.footballv3.team.validation;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.exception.exceptions.*;
 import io.github.qlrxn1152.footballv3.team.repository.TeamRepository;
+import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
+import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.repository.TeamMemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ public class TeamValidator {
 
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final TeamMatchRepository teamMatchRepository;
 
     public void validateExistsTeamName(String teamName) {
         if (teamRepository.existsByTeamName(teamName)) {
@@ -66,6 +69,15 @@ public class TeamValidator {
         }
     }
 
+    // TODO : EXIST ? COUNT ?
+    public void validateCanDisBandMatchedTeam(Long teamId) {
+        long matchedMatchCount = teamMatchRepository.countByTeamIdAndStatus(teamId, TeamMatchStatus.MATCHED);
+
+        if ( matchedMatchCount > 0 ) {
+            throw new CanNotDisbandMatchedTeamException();
+        }
+
+    }
 
 
 

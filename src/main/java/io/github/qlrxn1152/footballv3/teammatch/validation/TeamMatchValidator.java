@@ -1,8 +1,8 @@
 package io.github.qlrxn1152.footballv3.teammatch.validation;
 
+import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatch;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
-import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.DuplicateMatchRegistrationException;
-import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.InvalidMatchPlatedAtException;
+import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.*;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -21,12 +21,31 @@ public class TeamMatchValidator {
         }
     }
 
-    public void validateDuplicateRegistration(Long homeTeamId, TeamMatchStatus status) {
-        if (teamMatchRepository.existsByHomeTeamIdAndStatus(homeTeamId, status)) {
+    public void validateDuplicateMatchRegistration(Long teamId, TeamMatchStatus status) {
+        if (teamMatchRepository.existsByHomeTeamIdAndStatus(teamId, status)) {
             throw new DuplicateMatchRegistrationException();
+        }
+        if (teamMatchRepository.existsByAwayTeamIdAndStatus(teamId, status)) {
+            throw new DuplicateMatchRegistrationException();
+        }
+    }
+
+    public TeamMatch validateExistTeamMatchAndReturn(Long matchId) {
+        return teamMatchRepository.findById(matchId)
+                .orElseThrow(NotFoundTeamMatchException::new);
+    }
+
+    // PENDING 인 매치가 맞는지, awayTeam, homeTeam 이 다른지
+    public void validatePendingStatus(TeamMatch teamMatch) {
+        if (teamMatch.getStatus() != TeamMatchStatus.PENDING) {
+            throw new NotPendingTeamMatchException();
+        }
+    }
+
+    public void validateDifferentTeam(TeamMatch teamMatch, Long awayTeamId) {
+        if ( teamMatch.getHomeTeam().getId().equals(awayTeamId)) {
+            throw new SameTeamMatchAcceptException();
         }
 
     }
-
-
 }

@@ -12,9 +12,14 @@ public interface TeamMatchRepository extends JpaRepository<TeamMatch, Long> {
 
     boolean existsByHomeTeamIdAndStatus(Long homeTeamId, TeamMatchStatus status);
 
-    long countByHomeTeamIdAndStatus(Long homeTeamId, TeamMatchStatus status);
+    boolean existsByAwayTeamIdAndStatus(Long awayTeamId, TeamMatchStatus status);
+
+    @Query("select count(tm) from TeamMatch tm where tm.status = :status and (tm.homeTeam.id = :teamId or tm.awayTeam.id = :teamId)")
+    long countByTeamIdAndStatus(Long teamId, TeamMatchStatus status);
 
     void deleteAllByHomeTeamId(Long homeTeamId);
+
+    void deleteAllByAwayTeamId(Long awayTeamId);
 
     @Query("select tm from TeamMatch tm join fetch tm.homeTeam where tm.status = :status order by tm.playedAt asc, tm.createdAt asc")
     List<TeamMatch> findAllByStatusWithHomeTeam(@Param("status") TeamMatchStatus status);
