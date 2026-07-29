@@ -46,6 +46,13 @@ public class TeamMatchController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @GetMapping("/api/matches/completed")
+    public ResponseEntity<List<TeamMatchCompletedResponse>> getCompletedMatches() {
+        List<TeamMatchCompletedResponse> response = teamMatchService.getCompletedMatches();
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
     @PostMapping("/api/teams/{awayTeamId}/matches/{matchId}/accept")
     public ResponseEntity<TeamMatchAcceptResponse> acceptMatch(@PathVariable Long matchId, @PathVariable Long awayTeamId, @AuthenticationPrincipal Jwt jwt) {
         TeamMatchAcceptResponse response = teamMatchService.acceptMatch(matchId, awayTeamId, Long.valueOf(jwt.getSubject()));

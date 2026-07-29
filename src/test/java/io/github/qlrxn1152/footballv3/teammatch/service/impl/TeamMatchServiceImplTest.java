@@ -20,6 +20,7 @@ import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchMatchedRes
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchPendingResponse;
 import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.*;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
+import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchResultService;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -46,6 +47,7 @@ class TeamMatchServiceImplTest {
     @Autowired private TeamService teamService;
     @Autowired private MemberService memberService;
     @Autowired private TeamJoinRequestService teamJoinRequestService;
+    @Autowired private TeamMatchResultService teamMatchResultService;
 
     @Autowired private TeamMatchRepository teamMatchRepository;
 
@@ -569,7 +571,6 @@ class TeamMatchServiceImplTest {
         // then
         assertThat(queryCount).isEqualTo(1);
     }
-
 
 
 

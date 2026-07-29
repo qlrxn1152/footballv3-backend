@@ -18,6 +18,7 @@ import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchResultCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchAcceptResponse;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCompletedResponse;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCreateResponse;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchResultResponse;
 import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.AlreadyExistTeamMatchResultException;
@@ -31,6 +32,8 @@ import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.assertj.core.api.Assertions;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +42,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -476,6 +480,211 @@ class TeamMatchResultServiceImplTest {
         // when && then
         assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1560);
         assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1440);
+    }
+
+    @Test
+    @DisplayName(value = "COMPLETED 인 매치들을 조회할 수 있다.")
+    void getCompletedMatches() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+
+        // 1번째, 2번째 경기 모두 결과를 입력해서 종료 ( teamA vs teamB )
+
+        // 1번째 경기
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(1, 0));
+
+        // 2번째 경기
+        TeamMatchCreateResponse reMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(reMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(reMatch.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 0));
+
+        List<TeamMatchCompletedResponse> completedMatches = teamMatchService.getCompletedMatches();
+
+
+        // when && then
+        assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1560);
+        assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1440);
+        assertThat(completedMatches).hasSize(2);
+        assertThat(completedMatches).extracting(TeamMatchCompletedResponse::getHomeTeamName).containsExactly("teamA", "teamA");
+        assertThat(completedMatches).extracting(TeamMatchCompletedResponse::getHomeTeamRating).containsExactly(1560, 1560);
+    }
+
+    @Test
+    @DisplayName(value = "COMPLETED 인 매치들을 조회할 수 있다. ( 원정팀 승리 )")
+    void getCompletedMatches_awayWin() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+
+        // 1번째, 2번째 경기 모두 결과를 입력해서 종료 ( teamA vs teamB )
+
+        // 1번째 경기
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(1, 3)); // 1:3
+
+        // 2번째 경기
+        TeamMatchCreateResponse reMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(reMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(reMatch.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 5)); // 3:5
+
+        List<TeamMatchCompletedResponse> completedMatches = teamMatchService.getCompletedMatches();
+
+
+        // when && then
+        assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1440);
+        assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1560);
+        assertThat(completedMatches).hasSize(2);
+
+        assertThat(completedMatches).extracting(TeamMatchCompletedResponse::getWinnerTeamName).containsExactly("teamB", "teamB");
+        assertThat(completedMatches).extracting(TeamMatchCompletedResponse::getAwayTeamRating).containsExactly(1560, 1560);
+    }
+
+    @Test
+    @DisplayName(value = "점수가 무승부인 COMPLETED 매치도 결과에 포함된다.")
+    void getCompletedMatches_draw() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+
+        // 1번째, 2번째 경기 모두 결과를 입력해서 종료 ( teamA vs teamB )
+
+        // 1번째 경기
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(1, 1));
+
+        // 2번째 경기
+        TeamMatchCreateResponse reMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(reMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(reMatch.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 3));
+
+        List<TeamMatchCompletedResponse> completedMatches = teamMatchService.getCompletedMatches();
+
+
+        // when && then
+        assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1520);
+        assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1520);
+        assertThat(completedMatches).hasSize(2);
+
+        assertThat(completedMatches).extracting(TeamMatchCompletedResponse::getWinnerTeamName).containsExactly(null, null);
+        assertThat(completedMatches).extracting(TeamMatchCompletedResponse::getAwayTeamRating).containsExactly(1520, 1520);
+        assertThat(completedMatches).extracting(TeamMatchCompletedResponse::getHomeTeamRating).containsExactly(1520, 1520);
+    }
+
+    @Test
+    @DisplayName(value = "COMPLETED 인 매치들만 조회되어야 한다.")
+    void getCompletedMatches_only_completed() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+
+        // 1번째 경기
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(1, 2)); // 원정팀 승리
+
+        // 2번째 경기
+        TeamMatchCreateResponse reMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(reMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(reMatch.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // 홈팀 승리
+
+        // 3번째 경기 -> MATCHED
+        TeamMatchCreateResponse matchedMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(matchedMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+
+        // 4번째 경기 -> PENDING
+        TeamMatchCreateResponse pendingMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+
+
+        List<TeamMatchCompletedResponse> completedMatches = teamMatchService.getCompletedMatches();
+
+
+        // when && then
+        assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1500);
+        assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1500);
+        assertThat(completedMatches).hasSize(2);
+
+        assertThat(completedMatches).extracting(TeamMatchCompletedResponse::getWinnerTeamName).containsExactly("teamA", "teamB");
+    }
+
+    @Test
+    @DisplayName(value = "완료된 매치가 존재하지 않으면, 빈 목록을 반환한다.")
+    void getCompletedMatches_empty() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+
+        // MATCHED
+        TeamMatchCreateResponse matchedMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(matchedMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+
+        // PENDING
+        TeamMatchCreateResponse pendingMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+
+
+        List<TeamMatchCompletedResponse> completedMatches = teamMatchService.getCompletedMatches();
+
+
+        // when && then
+        assertThat(completedMatches).isEmpty();
+    }
+
+    @Test
+    @DisplayName(value = "N+1 문제 확인. 조회하는데에는 join fetch 를 통해서 해결한다.")
+    void getCompletedMatches_joinFetch() throws Exception {
+        // given
+        MemberCreateResponse leaderA = createMember("leaderA");
+        MemberCreateResponse leaderB = createMember("leaderB");
+        TeamCreateResponse teamA = createTeam("teamA", leaderA.getMemberId());
+        TeamCreateResponse teamB = createTeam("teamB", leaderB.getMemberId());
+
+        // 1번째, 2번째 경기 모두 결과를 입력해서 종료 ( teamA vs teamB )
+
+        // 1번째 경기
+        TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(4, 2));
+
+        // 2번째 경기
+        TeamMatchCreateResponse reMatch = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
+        acceptMatch(reMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
+        teamMatchResultService.registerMatchResult(reMatch.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1));
+
+        em.flush();
+        em.clear();
+
+        SessionFactory sessionFactory = emf.unwrap(SessionFactory.class);
+
+        Statistics statistics = sessionFactory.getStatistics();
+
+        statistics.clear();
+
+        List<TeamMatchCompletedResponse> responses = teamMatchService.getCompletedMatches();
+
+
+        long queryCount =
+                statistics.getPrepareStatementCount();
+
+        assertThat(responses)
+                .hasSize(2);
+
+        assertThat(queryCount)
+                .isEqualTo(1);
+
     }
 
 

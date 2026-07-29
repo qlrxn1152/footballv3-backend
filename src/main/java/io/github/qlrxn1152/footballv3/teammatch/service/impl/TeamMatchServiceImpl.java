@@ -7,11 +7,9 @@ import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatch;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchAcceptResponse;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCreateResponse;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchMatchedResponse;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchPendingResponse;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.*;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
+import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchResultRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
 import io.github.qlrxn1152.footballv3.teammatch.validation.TeamMatchValidator;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
@@ -30,6 +28,7 @@ import java.util.List;
 public class TeamMatchServiceImpl implements TeamMatchService {
 
     private final TeamMatchRepository teamMatchRepository;
+    private final TeamMatchResultRepository teamMatchResultRepository;
 
     private final TeamValidator teamValidator;
     private final TeamMemberValidator teamMemberValidator;
@@ -70,6 +69,15 @@ public class TeamMatchServiceImpl implements TeamMatchService {
         return teamMatchRepository.findAllByStatusWithTeams(TeamMatchStatus.MATCHED)
                 .stream()
                 .map(TeamMatchMatchedResponse::of)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TeamMatchCompletedResponse> getCompletedMatches() {
+        return teamMatchResultRepository.findAllCompletedMatchWithMatchAndTeams(TeamMatchStatus.COMPLETED)
+                .stream()
+                .map(TeamMatchCompletedResponse::of)
                 .toList();
     }
 
