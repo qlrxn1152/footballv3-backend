@@ -11,7 +11,7 @@ GET /api/matches/{matchId}
 - 홈팀 정보를 반환한다.
 - 현재 팀 레이팅을 반환한다.
 - 매치 상태를 반환한다.
-- playedAt, createdAt, matchedAt, completedAt을 반환한다.
+- playedAt 을 반환한다.
 
 ## PENDING
 

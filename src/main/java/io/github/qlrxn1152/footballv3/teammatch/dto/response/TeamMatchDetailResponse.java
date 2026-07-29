@@ -56,7 +56,8 @@ public class TeamMatchDetailResponse {
                     teamMatch.getPlayedAt()
             );
         } else if (teamMatch.getStatus() == TeamMatchStatus.COMPLETED) {
-            Team winnerTeam = teamMatchResult.getWinnerTeam() == null ? null : teamMatchResult.getWinnerTeam();
+
+            Team winnerTeam = teamMatchResult.getWinnerTeam();
 
             return new TeamMatchDetailResponse(
                     teamMatch.getId(),

@@ -27,7 +27,7 @@ public class TeamMatchResultValidator {
     }
 
     public TeamMatchResult validateExistTeamMatchResultAndReturnWithTeam(Long matchId) {
-        return teamMatchResultRepository.findByTeamMachIdWithWinnerTeam(matchId)
+        return teamMatchResultRepository.findByTeamMatchIdWithWinnerTeam(matchId)
                 .orElseThrow(NotFoundTeamMatchException::new);
     }
 }

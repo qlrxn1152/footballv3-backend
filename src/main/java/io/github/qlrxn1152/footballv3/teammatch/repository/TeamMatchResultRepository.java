@@ -13,7 +13,6 @@ public interface TeamMatchResultRepository extends JpaRepository<TeamMatchResult
 
     boolean existsByTeamMatchId(Long matchId);
 
-
     Optional<TeamMatchResult> findByTeamMatchId(Long matchId);
 
     @Query("select tmr from TeamMatchResult tmr join fetch tmr.teamMatch tm join fetch tm.homeTeam join fetch tm.awayTeam left join fetch tmr.winnerTeam where tm.status = :status order by tm.completedAt desc, tm.id desc")
@@ -23,7 +22,8 @@ public interface TeamMatchResultRepository extends JpaRepository<TeamMatchResult
     List<TeamMatchResult> findAllCompletedByTeamIdWithMatchAndTeams(@Param("teamId") Long teamId, @Param("status") TeamMatchStatus status);
 
     @Query("select tmr from TeamMatchResult tmr left join fetch tmr.winnerTeam where tmr.teamMatch.id = :matchId")
-    Optional<TeamMatchResult> findByTeamMachIdWithWinnerTeam(Long matchId);
+    Optional<TeamMatchResult> findByTeamMatchIdWithWinnerTeam(@Param("matchId") Long matchId);
+
 
 
 }
