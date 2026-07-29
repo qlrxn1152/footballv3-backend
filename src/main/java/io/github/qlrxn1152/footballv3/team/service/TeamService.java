@@ -21,5 +21,7 @@ public interface TeamService {
 
     TeamNameChangeResponse changeTeamName(Long teamId, Long loginMemberId, TeamNameChangeRequest request);
 
+    List<TeamRankingResponse> getTeamRankings();
+
 
 }

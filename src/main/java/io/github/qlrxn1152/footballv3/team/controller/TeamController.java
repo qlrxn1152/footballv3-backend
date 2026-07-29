@@ -59,8 +59,15 @@ public class TeamController {
     }
 
     @PatchMapping("/api/teams/{teamId}/name")
-    public ResponseEntity<TeamNameChangeResponse> changeTeamName(Long teamId, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody TeamNameChangeRequest request) {
+    public ResponseEntity<TeamNameChangeResponse> changeTeamName(@PathVariable Long teamId, @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody TeamNameChangeRequest request) {
         TeamNameChangeResponse response = teamService.changeTeamName(teamId, Long.valueOf(jwt.getSubject()), request);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/api/teams/rankings")
+    public ResponseEntity<List<TeamRankingResponse>> getTeamRankings() {
+        List<TeamRankingResponse> response = teamService.getTeamRankings();
 
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }

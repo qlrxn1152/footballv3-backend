@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -152,6 +153,31 @@ public class TeamServiceImpl implements TeamService {
 
         return TeamNameChangeResponse.of(team, previousTeamName);
 
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TeamRankingResponse> getTeamRankings() {
+        List<Team> teams = teamRepository.findAllForRanking();
+
+        List<TeamRankingResponse> responses = new ArrayList<>(teams.size()); // 팀수 ...
+
+        Integer previousRating = null;
+        int currentRank = 0;
+
+        for (int index = 0; index < teams.size(); index++) {
+            Team team = teams.get(index); // 1530
+
+            if (previousRating == null || previousRating != team.getRating()) {
+                currentRank = index + 1;
+            }
+
+            responses.add(TeamRankingResponse.of(currentRank, team));
+
+            previousRating = team.getRating(); // 1500
+        }
+
+        return responses;
     }
 
 

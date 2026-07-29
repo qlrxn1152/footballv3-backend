@@ -19,4 +19,7 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
     @Query("select t from Team t join fetch t.leaderMember where t.id = :teamId")
     Optional<Team> findByIdWithLeaderMember(@Param("teamId") Long teamId);
 
+    @Query("select t from Team t join fetch t.leaderMember order by t.rating desc, t.id asc")
+    List<Team> findAllForRanking();
+
 }
