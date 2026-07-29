@@ -67,4 +67,27 @@ public class TeamMatchController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+
+    @GetMapping("/api/teams/{teamId}/matches/pending")
+    public ResponseEntity<List<TeamMatchPendingResponse>> getPendingMatchesByTeamId(@PathVariable Long teamId) {
+        List<TeamMatchPendingResponse> response = teamMatchService.getPendingMatchesByTeamId(teamId);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/api/teams/{teamId}/matches/matched")
+    public ResponseEntity<List<TeamMatchMatchedResponse>> getMatchedMatchesByTeamId(@PathVariable Long teamId) {
+        List<TeamMatchMatchedResponse> response = teamMatchService.getMatchedMatchesByTeamId(teamId);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/api/teams/{teamId}/matches/completed")
+    public ResponseEntity<List<TeamMatchCompletedResponse>> getCompletedMatchesByTeamId(@PathVariable Long teamId) {
+        List<TeamMatchCompletedResponse> response = teamMatchService.getCompletedMatchesByTeamId(teamId);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+
 }

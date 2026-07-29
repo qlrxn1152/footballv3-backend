@@ -17,4 +17,10 @@ public interface TeamMatchService {
 
     TeamMatchAcceptResponse acceptMatch(Long matchId, Long awayTeamId, Long loginMemberId);
 
+    List<TeamMatchPendingResponse> getPendingMatchesByTeamId(Long teamId);
+
+    List<TeamMatchMatchedResponse> getMatchedMatchesByTeamId(Long teamId);
+
+    List<TeamMatchCompletedResponse> getCompletedMatchesByTeamId(Long teamId);
+
 }

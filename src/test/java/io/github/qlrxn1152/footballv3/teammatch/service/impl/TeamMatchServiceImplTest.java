@@ -14,10 +14,8 @@ import io.github.qlrxn1152.footballv3.teamjoinrequest.service.TeamJoinRequestSer
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatch;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchAcceptResponse;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchCreateResponse;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchMatchedResponse;
-import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchPendingResponse;
+import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchResultCreateRequest;
+import io.github.qlrxn1152.footballv3.teammatch.dto.response.*;
 import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.*;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchResultService;
@@ -572,6 +570,329 @@ class TeamMatchServiceImplTest {
         assertThat(queryCount).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName(value = "특정 팀이 등록한 PENDING 매치들을 조회할 수 있다.")
+    void getPendingMatchesByTeamId() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse leaderC = memberService.signup(new MemberCreateRequest("leaderC", "1234"));
+        MemberCreateResponse leaderD = memberService.signup(new MemberCreateRequest("leaderD", "1234"));
+
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamCreateResponse teamC = teamService.createTeam(new TeamCreateRequest("teamC"), leaderC.getMemberId());
+        TeamCreateResponse teamD = teamService.createTeam(new TeamCreateRequest("teamD"), leaderD.getMemberId());
+
+        TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
+
+        // when
+        List<TeamMatchPendingResponse> teamAPendingMatches = teamMatchService.getPendingMatchesByTeamId(teamA.getTeamId());
+
+        // then
+        assertThat(teamAPendingMatches.size()).isEqualTo(1);
+        assertThat(teamAPendingMatches.get(0).getMatchId()).isEqualTo(matchAB.getMatchId());
+        assertThat(teamAPendingMatches.get(0).getHomeTeamId()).isEqualTo(teamA.getTeamId());
+    }
+
+    @Test
+    @DisplayName(value = "특정 팀이 homeTeam 으로 참여한 MATCHED 상태인 매치들을 조회할 수 있다.")
+    void getMatchedMatchesByTEamId_homeTeam() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse leaderC = memberService.signup(new MemberCreateRequest("leaderC", "1234"));
+        MemberCreateResponse leaderD = memberService.signup(new MemberCreateRequest("leaderD", "1234"));
+
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamCreateResponse teamC = teamService.createTeam(new TeamCreateRequest("teamC"), leaderC.getMemberId());
+        TeamCreateResponse teamD = teamService.createTeam(new TeamCreateRequest("teamD"), leaderD.getMemberId());
+
+        TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
+        teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
+
+        // when
+        List<TeamMatchMatchedResponse> teamAHomeTeamMatchedMatches = teamMatchService.getMatchedMatchesByTeamId(teamA.getTeamId());
+
+        // then
+        assertThat(teamAHomeTeamMatchedMatches.size()).isEqualTo(1);
+        assertThat(teamAHomeTeamMatchedMatches.get(0).getMatchId()).isEqualTo(matchAB.getMatchId());
+        assertThat(teamAHomeTeamMatchedMatches.get(0).getHomeTeamId()).isEqualTo(teamA.getTeamId());
+        assertThat(teamAHomeTeamMatchedMatches.get(0).getAwayTeamId()).isEqualTo(teamD.getTeamId());
+    }
+
+    @Test
+    @DisplayName(value = "특정 팀이 awayTeam 으로 참여한 MATCHED 상태인 매치들을 조회할 수 있다.")
+    void getMatchedMatchesByTEamId_awayTeam() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse leaderC = memberService.signup(new MemberCreateRequest("leaderC", "1234"));
+        MemberCreateResponse leaderD = memberService.signup(new MemberCreateRequest("leaderD", "1234"));
+
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamCreateResponse teamC = teamService.createTeam(new TeamCreateRequest("teamC"), leaderC.getMemberId());
+        TeamCreateResponse teamD = teamService.createTeam(new TeamCreateRequest("teamD"), leaderD.getMemberId());
+
+        TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
+        teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
+
+        // when
+        List<TeamMatchMatchedResponse> teamDHomeTeamMatchedMatches = teamMatchService.getMatchedMatchesByTeamId(teamD.getTeamId());
+
+        // then
+        assertThat(teamDHomeTeamMatchedMatches.size()).isEqualTo(1);
+        assertThat(teamDHomeTeamMatchedMatches.get(0).getMatchId()).isEqualTo(matchAB.getMatchId());
+        assertThat(teamDHomeTeamMatchedMatches.get(0).getHomeTeamId()).isEqualTo(teamA.getTeamId());
+        assertThat(teamDHomeTeamMatchedMatches.get(0).getAwayTeamId()).isEqualTo(teamD.getTeamId());
+    }
+
+    @Test
+    @DisplayName(value = "특정 팀이 awayTeam 으로 참여한 매치와, homeTeam 으로 참여한 매치들중 MATCHED 상태인 매치들을 조회할 수 있다.")
+    void getMatchedMatchesByTeamId_homeAndAway() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse leaderC = memberService.signup(new MemberCreateRequest("leaderC", "1234"));
+        MemberCreateResponse leaderD = memberService.signup(new MemberCreateRequest("leaderD", "1234"));
+
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamCreateResponse teamC = teamService.createTeam(new TeamCreateRequest("teamC"), leaderC.getMemberId());
+        TeamCreateResponse teamD = teamService.createTeam(new TeamCreateRequest("teamD"), leaderD.getMemberId());
+
+        TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
+
+        teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
+        teamMatchService.acceptMatch(matchCD.getMatchId(), teamA.getTeamId(), leaderA.getMemberId()); // teamC vs teamA
+
+        // when
+        List<TeamMatchMatchedResponse> teamAMatchesMatches = teamMatchService.getMatchedMatchesByTeamId(teamA.getTeamId());
+
+        // then
+        assertThat(teamAMatchesMatches.size()).isEqualTo(2);
+        assertThat(teamAMatchesMatches).extracting(TeamMatchMatchedResponse::getHomeTeamId).containsExactly(teamA.getTeamId(), teamC.getTeamId());
+    }
+
+    @Test
+    @DisplayName(value = "특정 팀이 홈팀으로 참가한 COMPLETED 매치들을 조회한다.")
+    void getCompletedMatchesByTEamId_homeTeam() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse leaderC = memberService.signup(new MemberCreateRequest("leaderC", "1234"));
+        MemberCreateResponse leaderD = memberService.signup(new MemberCreateRequest("leaderD", "1234"));
+
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamCreateResponse teamC = teamService.createTeam(new TeamCreateRequest("teamC"), leaderC.getMemberId());
+        TeamCreateResponse teamD = teamService.createTeam(new TeamCreateRequest("teamD"), leaderD.getMemberId());
+
+        TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
+
+        teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
+        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // 3:1 로, teamA 가 승리.
+
+        // when
+        List<TeamMatchCompletedResponse> teamACompletedMatches = teamMatchService.getCompletedMatchesByTeamId(teamA.getTeamId());
+
+        // then
+        assertThat(teamACompletedMatches.size()).isEqualTo(1);
+        assertThat(teamACompletedMatches.get(0).getMatchId()).isEqualTo(matchAB.getMatchId());
+        assertThat(teamACompletedMatches.get(0).getStatus()).isEqualTo(TeamMatchStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName(value = "특정 팀이 원정팀으로 참가한 COMPLETED 매치들을 조회한다.")
+    void getCompletedMatchesByTEamId_awayTeam() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse leaderC = memberService.signup(new MemberCreateRequest("leaderC", "1234"));
+        MemberCreateResponse leaderD = memberService.signup(new MemberCreateRequest("leaderD", "1234"));
+
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamCreateResponse teamC = teamService.createTeam(new TeamCreateRequest("teamC"), leaderC.getMemberId());
+        TeamCreateResponse teamD = teamService.createTeam(new TeamCreateRequest("teamD"), leaderD.getMemberId());
+
+        TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
+
+        teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
+        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // 3:1 로, teamA 가 승리.
+
+        // when
+        List<TeamMatchCompletedResponse> teamDCompletedMatches = teamMatchService.getCompletedMatchesByTeamId(teamD.getTeamId());
+
+        // then
+        assertThat(teamDCompletedMatches.size()).isEqualTo(1);
+        assertThat(teamDCompletedMatches.get(0).getMatchId()).isEqualTo(matchAB.getMatchId());
+        assertThat(teamDCompletedMatches.get(0).getStatus()).isEqualTo(TeamMatchStatus.COMPLETED);
+    }
+
+    @Test
+    @DisplayName(value = "특정 팀이 참가한 무승부 COMPLETED도 포함된 매치들을 조회한다.")
+    void getCompletedMatchesByTEamId_draw() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse leaderC = memberService.signup(new MemberCreateRequest("leaderC", "1234"));
+        MemberCreateResponse leaderD = memberService.signup(new MemberCreateRequest("leaderD", "1234"));
+
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamCreateResponse teamC = teamService.createTeam(new TeamCreateRequest("teamC"), leaderC.getMemberId());
+        TeamCreateResponse teamD = teamService.createTeam(new TeamCreateRequest("teamD"), leaderD.getMemberId());
+
+        TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
+
+        teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
+        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(1, 1)); // 1:1 로, 무승부
+
+        TeamMatchCreateResponse secondMatch = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        teamMatchService.acceptMatch(secondMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId()); // teamA vs teamB
+        teamMatchResultService.registerMatchResult(secondMatch.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // 3:1 로, teamA 승리
+
+        // when
+        List<TeamMatchCompletedResponse> teamACompletedMatches = teamMatchService.getCompletedMatchesByTeamId(teamA.getTeamId());
+
+        // then
+        assertThat(teamACompletedMatches.size()).isEqualTo(2);
+        assertThat(teamACompletedMatches).extracting(TeamMatchCompletedResponse::getHomeTeamId).containsExactly(teamA.getTeamId(), teamA.getTeamId());
+    }
+
+    @Test
+    @DisplayName(value = "모든팀의 매치가 조회되는것이아닌, 특정팀의 매치들만 조회된다.")
+    void getCompletedMatchesByTEamId_onlyTheTeam() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse leaderC = memberService.signup(new MemberCreateRequest("leaderC", "1234"));
+        MemberCreateResponse leaderD = memberService.signup(new MemberCreateRequest("leaderD", "1234"));
+
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamCreateResponse teamC = teamService.createTeam(new TeamCreateRequest("teamC"), leaderC.getMemberId());
+        TeamCreateResponse teamD = teamService.createTeam(new TeamCreateRequest("teamD"), leaderD.getMemberId());
+
+        TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
+
+        teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
+        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(1, 1)); // 1:1 로, 무승부
+
+        TeamMatchCreateResponse secondMatch = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        teamMatchService.acceptMatch(secondMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId()); // teamA vs teamB
+        teamMatchResultService.registerMatchResult(secondMatch.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // 3:1 로, teamA 승리
+
+        TeamMatchCreateResponse thirdMatch = teamMatchService.registerMatch(teamD.getTeamId(), leaderD.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt)); // teamD 매치등록
+        teamMatchService.acceptMatch(thirdMatch.getMatchId(), teamA.getTeamId(), leaderA.getMemberId()); // teamD vs teamA
+        teamMatchResultService.registerMatchResult(thirdMatch.getMatchId(), leaderD.getMemberId(), new TeamMatchResultCreateRequest(3, 3)); // 3:1 로, teamA 승리
+
+        teamMatchService.acceptMatch(matchCD.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamC vs teamD
+        teamMatchResultService.registerMatchResult(matchCD.getMatchId(), leaderC.getMemberId(), new TeamMatchResultCreateRequest(2, 1)); // 2:1 로, teamC 승리
+
+
+        // when
+        List<TeamMatchCompletedResponse> teamACompletedMatches = teamMatchService.getCompletedMatchesByTeamId(teamA.getTeamId());
+
+        // then
+        assertThat(teamACompletedMatches.size()).isEqualTo(3);
+        assertThat(teamACompletedMatches).extracting(TeamMatchCompletedResponse::getHomeTeamId).containsExactly(teamA.getTeamId(), teamA.getTeamId(), teamD.getTeamId());
+    }
+
+    @Test
+    @DisplayName(value = "존재하는 팀이지만, 매치를 진행하지 않은 팀의 매치들을 조회하면, 빈 목록이 반환된다.")
+    void getMatchesByTeamId_empty_notFoundMatch() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+
+        // when
+        List<TeamMatchCompletedResponse> teamACompletedMatches = teamMatchService.getCompletedMatchesByTeamId(teamA.getTeamId());
+
+        // then
+        assertThat(teamACompletedMatches).isEmpty();
+    }
+
+    @Test
+    @DisplayName(value = "존재하지 않은 팀의 매치들을 조회하면, 빈 목록이 반환된다.")
+    void getMatchesByTeamId_empty_notFoundTeam() throws Exception {
+
+        // when && then
+        assertThatThrownBy(() -> teamMatchService.getPendingMatchesByTeamId(999L))
+                .isInstanceOf(NotFoundTeamException.class)
+                .hasMessage("팀 조회 실패");
+
+        assertThatThrownBy(() -> teamMatchService.getMatchedMatchesByTeamId(9949L))
+                .isInstanceOf(NotFoundTeamException.class)
+                .hasMessage("팀 조회 실패");
+
+        assertThatThrownBy(() -> teamMatchService.getCompletedMatchesByTeamId(9919L))
+                .isInstanceOf(NotFoundTeamException.class)
+                .hasMessage("팀 조회 실패");
+
+    }
+
+
+    @Test
+    @DisplayName(value = "N+1 문제 해결 / 매치가 몇개든, 쿼리수는 2개로 나와야한다.")
+    void getTheTeamMatches_queryCount() throws Exception {
+        // given
+        MemberCreateResponse leaderA = memberService.signup(new MemberCreateRequest("leaderA", "1234"));
+        MemberCreateResponse leaderB = memberService.signup(new MemberCreateRequest("leaderB", "1234"));
+        MemberCreateResponse leaderC = memberService.signup(new MemberCreateRequest("leaderC", "1234"));
+        MemberCreateResponse leaderD = memberService.signup(new MemberCreateRequest("leaderD", "1234"));
+
+        TeamCreateResponse teamA = teamService.createTeam(new TeamCreateRequest("teamA"), leaderA.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), leaderB.getMemberId());
+        TeamCreateResponse teamC = teamService.createTeam(new TeamCreateRequest("teamC"), leaderC.getMemberId());
+        TeamCreateResponse teamD = teamService.createTeam(new TeamCreateRequest("teamD"), leaderD.getMemberId());
+
+        TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
+
+        teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
+        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(1, 1)); // 1:1 로, 무승부
+
+        TeamMatchCreateResponse secondMatch = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt));
+        teamMatchService.acceptMatch(secondMatch.getMatchId(), teamB.getTeamId(), leaderB.getMemberId()); // teamA vs teamB
+        teamMatchResultService.registerMatchResult(secondMatch.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // 3:1 로, teamA 승리
+
+        TeamMatchCreateResponse thirdMatch = teamMatchService.registerMatch(teamD.getTeamId(), leaderD.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt)); // teamD 매치등록
+        teamMatchService.acceptMatch(thirdMatch.getMatchId(), teamA.getTeamId(), leaderA.getMemberId()); // teamD vs teamA
+        teamMatchResultService.registerMatchResult(thirdMatch.getMatchId(), leaderD.getMemberId(), new TeamMatchResultCreateRequest(3, 3)); // 3:1 로, teamA 승리
+
+        teamMatchService.acceptMatch(matchCD.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamC vs teamD
+        teamMatchResultService.registerMatchResult(matchCD.getMatchId(), leaderC.getMemberId(), new TeamMatchResultCreateRequest(2, 1)); // 2:1 로, teamC 승리
+
+        // teamA -> 3개의 매치를 참여. ( 모두 종료 )
+
+        em.flush();
+        em.clear();
+
+        SessionFactory sessionFactory = emf.unwrap(SessionFactory.class);
+        Statistics statistics = sessionFactory.getStatistics();
+
+        statistics.clear();
+
+        List<TeamMatchCompletedResponse> responses = teamMatchService.getCompletedMatchesByTeamId(teamA.getTeamId());
+
+        long queryCount = statistics.getPrepareStatementCount();
+
+        assertThat(responses).hasSize(3);
+        assertThat(queryCount).isEqualTo(2);
+
+    }
 
 
 

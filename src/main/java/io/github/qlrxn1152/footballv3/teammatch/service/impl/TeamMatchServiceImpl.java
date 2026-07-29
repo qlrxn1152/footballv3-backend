@@ -98,9 +98,36 @@ public class TeamMatchServiceImpl implements TeamMatchService {
         return TeamMatchAcceptResponse.of(teamMatch);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<TeamMatchPendingResponse> getPendingMatchesByTeamId(Long teamId) {
+        teamValidator.validateExistTeamAndReturn(teamId);
 
+        return teamMatchRepository.findAllPendingByTeamIdWithHomeTeam(teamId, TeamMatchStatus.PENDING)
+                .stream()
+                .map(TeamMatchPendingResponse::of)
+                .toList();
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<TeamMatchMatchedResponse> getMatchedMatchesByTeamId(Long teamId) {
+        teamValidator.validateExistTeamAndReturn(teamId);
+        return teamMatchRepository.findAllMatchedByTeamIdWithHomeTeam(teamId, TeamMatchStatus.MATCHED)
+                .stream()
+                .map(TeamMatchMatchedResponse::of)
+                .toList();
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<TeamMatchCompletedResponse> getCompletedMatchesByTeamId(Long teamId) {
+        teamValidator.validateExistTeamAndReturn(teamId);
+        return teamMatchResultRepository.findAllCompletedByTeamIdWithMatchAndTeams(teamId, TeamMatchStatus.COMPLETED)
+                .stream()
+                .map(TeamMatchCompletedResponse::of)
+                .toList();
+    }
 
 
 }

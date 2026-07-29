@@ -21,7 +21,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize.requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/members", "/api/auth/login").permitAll() // 회원가입이랑 로그인 요청은 JWT 토큰이 없어도 됨.
                         .requestMatchers(HttpMethod.GET, "/api/teams", "/api/teams/{teamId}").permitAll() // 팀 목록조회, 팀 상세페이지는 모든유저가 가능
-                        .requestMatchers(HttpMethod.GET, "/api/matches/pending").permitAll() // PENDING 매치들 조회는 모든 유저가 가능.
+                        .requestMatchers(HttpMethod.GET, "/api/matches/pending", "/api/matches/matched", "/api/matches/completed").permitAll() // 매치들 조회는 누구나 가능
+                        .requestMatchers(HttpMethod.GET, "/api/teams/{teamId}/matches/pending", "/api/teams/{teamId}/matches/matched" ,"/api/teams/{teamId}/matches/completed").permitAll() // 특정 팀의 매치들은 누구나 조회 가능
                         .anyRequest().authenticated() // 나머지는 JWT 토큰 필요
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

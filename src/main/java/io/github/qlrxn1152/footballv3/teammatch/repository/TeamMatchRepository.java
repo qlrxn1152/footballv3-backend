@@ -30,4 +30,18 @@ public interface TeamMatchRepository extends JpaRepository<TeamMatch, Long> {
 
     @Query("select tm from TeamMatch tm join fetch tm.homeTeam left join fetch tm.awayTeam where tm.id = :matchId")
     Optional<TeamMatch> findByMatchIdWithTeams(@Param("matchId") Long matchId);
+
+
+
+    @Query("select tm from TeamMatch tm join fetch tm.homeTeam where tm.homeTeam.id = :teamId and tm.status = :status")
+    List<TeamMatch> findAllPendingByTeamIdWithHomeTeam(@Param("teamId") Long teamId, @Param("status") TeamMatchStatus status);
+
+    @Query("select tm from TeamMatch tm join fetch tm.homeTeam left join fetch tm.awayTeam where tm.status = :status and (tm.homeTeam.id = :teamId or tm.awayTeam.id = :teamId) ")
+    List<TeamMatch> findAllMatchedByTeamIdWithHomeTeam(@Param("teamId") Long teamId, @Param("status") TeamMatchStatus status);
+
+    // teamMatchreuslt -> 조인 ? COMPLETED 인 매치를 가지고오려면 . .
+
+
+
+
 }
