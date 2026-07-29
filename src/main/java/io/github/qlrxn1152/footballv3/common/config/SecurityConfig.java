@@ -25,6 +25,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/matches/pending", "/api/matches/matched", "/api/matches/completed").permitAll() // 매치들 조회는 누구나 가능
                         .requestMatchers(HttpMethod.GET, "/api/teams/{teamId}/matches/pending", "/api/teams/{teamId}/matches/matched" ,"/api/teams/{teamId}/matches/completed").permitAll() // 특정 팀의 매치들은 누구나 조회 가능
                         .requestMatchers(HttpMethod.GET, "/api/teams/rankings").permitAll() // 팀 순위는 누구나 조회 가능
+                        .requestMatchers(HttpMethod.GET, "/api/matches/{matchId}").permitAll() // 매치 상세 조회는 누구나 가능
                         .anyRequest().authenticated() // 나머지는 JWT 토큰 필요
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

@@ -1,7 +1,9 @@
 package io.github.qlrxn1152.footballv3.teammatch.validation;
 
+import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchResult;
 import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.AlreadyExistTeamMatchResultException;
 import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.InvalidTeamMatchScoreException;
+import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.NotFoundTeamMatchException;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchResultRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -22,5 +24,10 @@ public class TeamMatchResultValidator {
         if ( teamMatchResultRepository.existsByTeamMatchId(matchId) ) {
             throw new AlreadyExistTeamMatchResultException();
         }
+    }
+
+    public TeamMatchResult validateExistTeamMatchResultAndReturnWithTeam(Long matchId) {
+        return teamMatchResultRepository.findByTeamMachIdWithWinnerTeam(matchId)
+                .orElseThrow(NotFoundTeamMatchException::new);
     }
 }

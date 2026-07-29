@@ -89,5 +89,12 @@ public class TeamMatchController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @GetMapping("/api/matches/{matchId}")
+    public ResponseEntity<TeamMatchDetailResponse> getMatch(@PathVariable Long matchId) {
+        TeamMatchDetailResponse response = teamMatchService.getMatch(matchId);
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
 
 }

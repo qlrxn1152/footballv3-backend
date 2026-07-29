@@ -23,4 +23,6 @@ public interface TeamMatchService {
 
     List<TeamMatchCompletedResponse> getCompletedMatchesByTeamId(Long teamId);
 
+    TeamMatchDetailResponse getMatch(Long matchId);
+
 }

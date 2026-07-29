@@ -5,12 +5,14 @@ import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
 import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatch;
+import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchResult;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchStatus;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.*;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchResultRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
+import io.github.qlrxn1152.footballv3.teammatch.validation.TeamMatchResultValidator;
 import io.github.qlrxn1152.footballv3.teammatch.validation.TeamMatchValidator;
 import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.validation.TeamMemberValidator;
@@ -34,6 +36,7 @@ public class TeamMatchServiceImpl implements TeamMatchService {
     private final TeamMemberValidator teamMemberValidator;
     private final MemberValidator memberValidator;
     private final TeamMatchValidator teamMatchValidator;
+    private final TeamMatchResultValidator teamMatchResultValidator;
 
     @Override
     public TeamMatchCreateResponse registerMatch(Long homeTeamId, Long loginMemberId, TeamMatchCreateRequest request) {
@@ -127,6 +130,21 @@ public class TeamMatchServiceImpl implements TeamMatchService {
                 .stream()
                 .map(TeamMatchCompletedResponse::of)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TeamMatchDetailResponse getMatch(Long matchId) {
+        TeamMatch teamMatch = teamMatchValidator.validateExistTeamMatchAndReturnWithTeams(matchId);
+        TeamMatchResult teamMatchResult = null;
+
+        // COMPLETED 인 경우에만, MatchResult 가 존재하므로.
+        if (teamMatch.getStatus() == TeamMatchStatus.COMPLETED) {
+            teamMatchResult = teamMatchResultValidator.validateExistTeamMatchResultAndReturnWithTeam(matchId);
+        }
+
+
+        return TeamMatchDetailResponse.of(teamMatch, teamMatchResult);
     }
 
 
