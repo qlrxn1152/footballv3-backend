@@ -18,7 +18,7 @@ public class TeamMatchCompletedResponse {
 
     private Long matchId;
 
-    private Long homTeamId;
+    private Long homeTeamId;
     private String homeTeamName;
     private int homeTeamRating;
     private int homeScore;
