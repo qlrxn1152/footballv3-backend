@@ -29,6 +29,12 @@ import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchRepository;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchResultRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchResultService;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchService;
+import io.github.qlrxn1152.footballv3.teammatchgoal.domain.TeamMatchGoal;
+import io.github.qlrxn1152.footballv3.teammatchgoal.dto.request.TeamMatchGoalCreateRequest;
+import io.github.qlrxn1152.footballv3.teammatchgoal.dto.request.TeamMatchGoalScorerRequest;
+import io.github.qlrxn1152.footballv3.teammatchgoal.dto.response.TeamMatchGoalCreateResponse;
+import io.github.qlrxn1152.footballv3.teammatchgoal.service.TeamMatchGoalService;
+import io.github.qlrxn1152.footballv3.teammatchgoal.service.impl.TeamMatchGoalServiceImpl;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.assertj.core.api.Assertions;
@@ -42,6 +48,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -57,6 +64,7 @@ class TeamMatchResultServiceImplTest {
     @Autowired private MemberService memberService;
     @Autowired private TeamJoinRequestService teamJoinRequestService;
     @Autowired private TeamMatchResultService teamMatchResultService;
+    @Autowired private TeamMatchGoalService teamMatchGoalService;
 
     @Autowired private TeamMatchRepository teamMatchRepository;
     @Autowired private TeamMatchResultRepository teamMatchResultRepository;
@@ -84,6 +92,36 @@ class TeamMatchResultServiceImplTest {
         return teamMatchService.acceptMatch(matchId, awayTeamId, loginMemberId);
     }
 
+    private List<TeamMatchGoalScorerRequest> homeScorer(int goalCount) {
+        TeamMatchGoalScorerRequest scorerHomeA = new TeamMatchGoalScorerRequest(createMember("homeA").getMemberId(), 1);
+        TeamMatchGoalScorerRequest scorerHomeB = new TeamMatchGoalScorerRequest(createMember("homeB").getMemberId(), goalCount - 1);
+        TeamMatchGoalScorerRequest scorerHomeC = new TeamMatchGoalScorerRequest(createMember("homeC").getMemberId(), 0);
+
+        List<TeamMatchGoalScorerRequest> homeScorers = new ArrayList<>();
+        homeScorers.add(scorerHomeA);
+        homeScorers.add(scorerHomeB);
+        homeScorers.add(scorerHomeC);
+
+        return homeScorers;
+    }
+
+    private List<TeamMatchGoalScorerRequest> awayScorer(int goalCount) {
+        TeamMatchGoalScorerRequest scorerAwayA = new TeamMatchGoalScorerRequest(createMember("awayA").getMemberId(), 1);
+        TeamMatchGoalScorerRequest scorerAwayB = new TeamMatchGoalScorerRequest(createMember("awayB").getMemberId(), 0);
+        TeamMatchGoalScorerRequest scorerAwayC = new TeamMatchGoalScorerRequest(createMember("awayC").getMemberId(), 0);
+
+        List<TeamMatchGoalScorerRequest> awayScorers = new ArrayList<>();
+        awayScorers.add(scorerAwayA);
+        awayScorers.add(scorerAwayB);
+        awayScorers.add(scorerAwayC);
+
+        return awayScorers;
+    }
+
+    private TeamMatchGoalCreateRequest createTeamMatchGoal(int homeGoalCount, int awayGoalCount) {
+        return new TeamMatchGoalCreateRequest(homeScorer(homeGoalCount), awayScorer(awayGoalCount));
+    }
+
     @Test
     @DisplayName(value = "홈팀 팀장은 MATCHED 매치의 결과를 입력할 수 있다. ( 홈팀승 ) ")
     void registerMatchResult_homeWin() throws Exception {
@@ -95,12 +133,23 @@ class TeamMatchResultServiceImplTest {
         TeamMatchCreateResponse match = registerPendingMatch(teamA.getTeamId(), leaderA.getMemberId(), teamMatchPlayedAt);
         acceptMatch(match.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
 
+
         // when
         TeamMatchResultResponse response = teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(2, 1));
+        TeamMatchGoalCreateResponse matchGoalResponse = teamMatchGoalService.registerGoals(match.getMatchId(), leaderA.getMemberId(), createTeamMatchGoal(2, 1));
         TeamMatchResult teamMatchResult = teamMatchResultRepository.findByTeamMatchId(match.getMatchId()).get();
         TeamMatch teamMatch = teamMatchRepository.findById(match.getMatchId()).get();
 
         // then
+        assertThat(matchGoalResponse.getHomeScore()).isEqualTo(2);
+        assertThat(matchGoalResponse.getAwayScore()).isEqualTo(1);
+
+        assertThat(matchGoalResponse.getHomeScorers().size()).isEqualTo(3);
+        assertThat(matchGoalResponse.getAwayScorers().size()).isEqualTo(3);
+
+        assertThat(matchGoalResponse.getHomeScorers()).extracting(TeamMatchGoalScorerRequest::getGoalCount).containsExactly(1, 1, 0);
+        assertThat(matchGoalResponse.getAwayScorers()).extracting(TeamMatchGoalScorerRequest::getGoalCount).containsExactly(1, 0, 0);
+
         assertThat(teamMatchResult.getTeamMatch().getId()).isEqualTo(match.getMatchId());
         assertThat(teamMatchResult.getTeamMatch().getId()).isEqualTo(response.getMatchId());
         assertThat(teamMatchResult.getWinnerTeam().getId()).isEqualTo(teamA.getTeamId());

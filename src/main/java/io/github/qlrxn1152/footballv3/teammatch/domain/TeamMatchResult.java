@@ -35,6 +35,9 @@ public class TeamMatchResult {
     @Column(name = "completed_at", nullable = false)
     private LocalDateTime completedAt;
 
+    @Column(name = "goal_record", nullable = false)
+    private boolean goalRecord; // 골이 나온 경기면 true
+
     private TeamMatchResult(TeamMatch teamMatch, int homeScore, int awayScore) {
         this.teamMatch = teamMatch;
         this.homeScore = homeScore;
@@ -42,6 +45,8 @@ public class TeamMatchResult {
 
         this.winnerTeam = determineWinnerTeam(teamMatch, homeScore, awayScore);
         this.completedAt = LocalDateTime.now();
+
+        this.goalRecord = isGoalRecord();
     }
 
     private Team determineWinnerTeam(TeamMatch teamMatch, int homeScore, int awayScore) {
@@ -57,5 +62,13 @@ public class TeamMatchResult {
 
     public static TeamMatchResult createMatchResult(TeamMatch teamMatch, int homeScore, int awayScore) {
         return new TeamMatchResult(teamMatch, homeScore, awayScore);
+    }
+
+    private boolean isGoalRecord(int homeScore, int awayScore) {
+        if (homeScore > 0 || awayScore > 0) {
+            return true;
+        }
+
+        return false;
     }
 }

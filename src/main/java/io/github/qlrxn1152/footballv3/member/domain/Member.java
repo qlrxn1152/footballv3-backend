@@ -52,4 +52,8 @@ public class Member {
         return new Member(username, encodedPassword);
     }
 
+    public void addGoals(int goalCount) {
+        this.totalGoalCount += goalCount;
+    }
+
 }
