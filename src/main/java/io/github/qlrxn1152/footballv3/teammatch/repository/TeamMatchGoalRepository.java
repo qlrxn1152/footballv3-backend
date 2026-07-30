@@ -9,4 +9,6 @@ import java.util.Optional;
 public interface TeamMatchGoalRepository extends JpaRepository<TeamMatchGoal, Long> {
 
     List<TeamMatchGoal> findAllByTeamMatchId(Long teamMatchId);
+
+    boolean existsByTeamMatchIdAndMemberId(Long teamMatchId, Long memberId);
 }

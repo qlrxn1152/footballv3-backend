@@ -9,6 +9,7 @@ import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchGoal;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchResult;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchResultCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchResultResponse;
+import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.InvalidTeamMatchScoreException;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchGoalRepository;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchResultRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchResultService;
@@ -60,7 +61,12 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         // 점수방식은 올바른 방식인지
         teamMatchResultValidator.validateMatchResultScore(request.getHomeScore(), request.getAwayScore());
 
-        List<TeamMatchGoal> teamMatchGoals = getTeamMatchGoals(request, teamMatch);
+        // 득점 합계가 맞는지
+        if ((request.getHomeScore() != request.getHomeScorers().stream().mapToInt(Scorer::getGoalCount).sum()) || (request.getAwayScore() != request.getAwayScorers().stream().mapToInt(Scorer::getGoalCount).sum())) {
+            throw new InvalidTeamMatchScoreException();
+        }
+
+        List<TeamMatchGoal> teamMatchGoals = getTeamMatchGoals(request, teamMatch, teamMatch.getHomeTeam().getId(), teamMatch.getAwayTeam().getId());
 
         teamMatchGoalRepository.saveAll(teamMatchGoals); // 득점자 정보들 저장
         TeamMatchResult matchResult = teamMatchResultRepository.save(TeamMatchResult.createMatchResult(teamMatch, request.getHomeScore(), request.getAwayScore())); // 매치 결과 저장
@@ -70,12 +76,16 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         return TeamMatchResultResponse.of(matchResult);
     }
 
-    public List<TeamMatchGoal> getTeamMatchGoals(TeamMatchResultCreateRequest request, TeamMatch teamMatch) {
+    public List<TeamMatchGoal> getTeamMatchGoals(TeamMatchResultCreateRequest request, TeamMatch teamMatch, Long homeTeamId, Long awayTeamId) {
 
         List<TeamMatchGoal> teamMatchGoals = new ArrayList<>();
 
         request.getHomeScorers().forEach(homeScorer -> {
             Member scorer = memberValidator.validateExistMemberAndReturn(homeScorer.getMemberId());
+            TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(scorer.getId());
+            teamMemberValidator.validateBelongsToTeam(homeTeamId, teamMember);
+            teamMatchGoalRepository.existsByTeamMatchIdAndMemberId(teamMatch.getId(), scorer.getId());
+
 
             TeamMatchGoal teamMatchGoal = TeamMatchGoal.of(teamMatch, teamMatch.getHomeTeam(), scorer, homeScorer.getGoalCount());
             scorer.addGoals(homeScorer.getGoalCount());
@@ -84,8 +94,11 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
 
         request.getAwayScorers().forEach(awayScorer -> {
             Member scorer = memberValidator.validateExistMemberAndReturn(awayScorer.getMemberId());
+            TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(scorer.getId());
+            teamMemberValidator.validateBelongsToTeam(awayTeamId, teamMember);
+            teamMatchGoalRepository.existsByTeamMatchIdAndMemberId(teamMatch.getId(), scorer.getId());
 
-            TeamMatchGoal teamMatchGoal = TeamMatchGoal.of(teamMatch, teamMatch.getHomeTeam(), scorer, awayScorer.getGoalCount());
+            TeamMatchGoal teamMatchGoal = TeamMatchGoal.of(teamMatch, teamMatch.getAwayTeam(), scorer, awayScorer.getGoalCount());
             scorer.addGoals(awayScorer.getGoalCount());
             teamMatchGoals.add(teamMatchGoal);
         });
