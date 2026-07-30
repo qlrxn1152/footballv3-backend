@@ -1,33 +1,45 @@
-1. 존재하는 경기여야 한다.
+1. 존재하는 매치여야 한다.
 
-2. COMPLETED 경기만 득점자를 등록할 수 있다.
+2. 로그인 Member가 존재해야 한다.
 
-3. 홈팀 팀장만 등록할 수 있다.
+3. MATCHED 상태만 결과를 등록할 수 있다.
 
-4. 경기 결과가 반드시 존재해야 한다.
+4. 홈팀 팀장만 결과를 등록할 수 있다.
 
-5. 홈팀 득점자 골 합계 = homeScore
+5. 경기 결과는 한 번만 등록할 수 있다.
 
-6. 원정팀 득점자 골 합계 = awayScore
+6. homeScore / awayScore는 0 이상이어야 한다.
 
-7. 득점자는 실제 해당 경기의 홈팀/원정팀 소속 선수여야 한다.
+7. homeScorers의 goalCount 합계
+   = homeScore
 
-8. 선수 한 명당 한 경기에서 한 행만 저장한다.
+8. awayScorers의 goalCount 합계
+   = awayScore
 
-9. 같은 선수를 request 안에서 중복 등록할 수 없다.
+9. 각 득점자의 goalCount는 1 이상이어야 한다.
 
-10. goalCount는 1 이상이어야 한다.
+10. 홈팀 득점자는 실제 홈팀 소속 선수여야 한다.
 
-11. 0:0 경기는
-    homeScorers = []
-    awayScorers = []
-    로 정상 등록 가능하다.
+11. 원정팀 득점자는 실제 원정팀 소속 선수여야 한다.
 
-12. 득점 기록 성공 시
-    Member.totalGoalCount도 같이 증가한다.
+12. 같은 선수를 한 경기에서 두 번 입력할 수 없다.
 
-13. 동일 경기의 득점 기록은 한 번만 가능하다.
+13. 같은 선수를 homeScorers와 awayScorers 양쪽에 넣을 수 없다.
 
-14. 중간에 검증 하나라도 실패하면
-    TeamMatchGoal 저장 X
-    Member.totalGoalCount 변경 X
+14. 0골인 팀은 scorer 목록이 빈 배열이어야 한다.
+
+15. 0:0은
+    homeScorers=[]
+    awayScorers=[]
+    로 정상 결과 등록 가능하다.
+
+16. 결과 저장 성공 시 Member.totalGoalCount도 함께 증가한다.
+
+17. 모든 처리는 하나의 트랜잭션에서 수행한다.
+
+18. 검증 하나라도 실패하면
+    - TeamMatch COMPLETED 변경 X
+    - TeamMatchResult 저장 X
+    - TeamMatchGoal 저장 X
+    - Team Rating 변경 X
+    - Member.totalGoalCount 변경 X

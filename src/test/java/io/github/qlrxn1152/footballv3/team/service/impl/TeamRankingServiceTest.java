@@ -81,14 +81,20 @@ class TeamRankingServiceImplTest {
             Long matchId,
             Long homeLeaderId,
             int homeScore,
-            int awayScore
+            int awayScore,
+            Long homeScorerId,
+            Long awayScorerId
     ) {
         teamMatchResultService.registerMatchResult(
                 matchId,
                 homeLeaderId,
                 new TeamMatchResultCreateRequest(
                         homeScore,
-                        awayScore
+                        awayScore,
+                        homeScore == 0 ? List.of() : List.of(new TeamMatchResultCreateRequest.Scorer(homeScorerId, homeScore)),
+                        awayScore == 0 ? List.of() : List.of(new TeamMatchResultCreateRequest.Scorer(awayScorerId, awayScore))
+
+
                 )
         );
     }
@@ -147,10 +153,10 @@ class TeamRankingServiceImplTest {
         TeamMatchCreateResponse teamCvsTeamDMatch = createMatchedMatch(teamC.getTeamId(), leaderC.getMemberId(), teamD.getTeamId(), leaderD.getMemberId(), playedAt);
 
         // teamA vs teamB -> 무승부
-        completeMatch(teamAvsTeamBMatch.getMatchId(), leaderA.getMemberId(), 1, 1);
+        completeMatch(teamAvsTeamBMatch.getMatchId(), leaderA.getMemberId(), 1, 1, leaderA.getMemberId(), leaderB.getMemberId());
 
         // teamC -> teamD -> teamC 승리
-        completeMatch(teamCvsTeamDMatch.getMatchId(), leaderC.getMemberId(), 3, 1);
+        completeMatch(teamCvsTeamDMatch.getMatchId(), leaderC.getMemberId(), 3, 1, leaderA.getMemberId(), leaderB.getMemberId());
 
 
         // when
@@ -188,15 +194,15 @@ class TeamRankingServiceImplTest {
 
 
         // teamA vs teamB -> 무승부
-        completeMatch(teamAvsTeamBMatch.getMatchId(), leaderA.getMemberId(), 1, 1);
+        completeMatch(teamAvsTeamBMatch.getMatchId(), leaderA.getMemberId(), 1, 1, leaderA.getMemberId(), leaderB.getMemberId());
 
         // teamC vs teamD -> teamC 승리
-        completeMatch(teamCvsTeamDMatch.getMatchId(), leaderC.getMemberId(), 3, 1);
+        completeMatch(teamCvsTeamDMatch.getMatchId(), leaderC.getMemberId(), 3, 1, leaderA.getMemberId(), leaderB.getMemberId());
 
         // 1510, 1510, 1530, 1470
 
         // teamA vs teamC -> teamA 승리
-        completeMatch(teamAvsTeamCMatch.getMatchId(), leaderA.getMemberId(), 3, 2);
+        completeMatch(teamAvsTeamCMatch.getMatchId(), leaderA.getMemberId(), 3, 2, leaderA.getMemberId(), leaderB.getMemberId());
 
         // 1540, 1510, 1500, 1470
 
@@ -239,13 +245,13 @@ class TeamRankingServiceImplTest {
 
 
         // teamA vs teamB -> 무승부
-        completeMatch(teamAvsTeamBMatch.getMatchId(), leaderA.getMemberId(), 1, 1);
+        completeMatch(teamAvsTeamBMatch.getMatchId(), leaderA.getMemberId(), 1, 1, leaderA.getMemberId(), leaderB.getMemberId());
 
         // teamC vs teamD -> teamC 승리
-        completeMatch(teamCvsTeamDMatch.getMatchId(), leaderC.getMemberId(), 3, 1);
+        completeMatch(teamCvsTeamDMatch.getMatchId(), leaderC.getMemberId(), 3, 1, leaderA.getMemberId(), leaderB.getMemberId());
 
         // teamA vs teamC -> teamA 승리
-        completeMatch(teamAvsTeamCMatch.getMatchId(), leaderA.getMemberId(), 3, 2);
+        completeMatch(teamAvsTeamCMatch.getMatchId(), leaderA.getMemberId(), 3, 2, leaderA.getMemberId(), leaderB.getMemberId());
 
         em.flush();
         em.clear();

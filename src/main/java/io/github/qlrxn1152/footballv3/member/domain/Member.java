@@ -54,6 +54,10 @@ public class Member {
 
     public void addGoals(int goalCount) {
         this.totalGoalCount += goalCount;
+
+        this.rating += (goalCount * 10);
+
+        // 골 넣은 수 만큼 .. 레이팅 반영 => 골수 x 10 점 반영
     }
 
 }

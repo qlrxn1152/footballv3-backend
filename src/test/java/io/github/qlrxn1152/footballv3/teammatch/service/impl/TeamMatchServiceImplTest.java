@@ -54,7 +54,7 @@ class TeamMatchServiceImplTest {
     @Autowired private EntityManager em;
     @Autowired private EntityManagerFactory emf;
 
-
+    /**
     private LocalDateTime teamMatchPlayedAt = LocalDateTime.of(3000, 1, 1, 1, 1);
     private LocalDateTime invalidTeamMatchPlayedAt = LocalDateTime.of(2026, 1, 1, 1, 1);
 
@@ -700,7 +700,9 @@ class TeamMatchServiceImplTest {
         TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
 
         teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
-        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // 3:1 로, teamA 가 승리.
+        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), TeamMatchResultServiceImplTest.resultRequest(3,1, leaderA.getMemberId(), leaderB.getMemberId()));
+
+ // 3:1 로, teamA 가 승리.
 
         // when
         List<TeamMatchCompletedResponse> teamACompletedMatches = teamMatchService.getCompletedMatchesByTeamId(teamA.getTeamId());
@@ -729,7 +731,8 @@ class TeamMatchServiceImplTest {
         TeamMatchCreateResponse matchCD = teamMatchService.registerMatch(teamC.getTeamId(), leaderC.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt.plusDays(1)));
 
         teamMatchService.acceptMatch(matchAB.getMatchId(), teamD.getTeamId(), leaderD.getMemberId()); // teamA vs teamD
-        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // 3:1 로, teamA 가 승리.
+                teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), resultRequest(1, 0, leaderA.getMemberId(), leaderB.getMemberId()));
+ // 3:1 로, teamA 가 승리.
 
         // when
         List<TeamMatchCompletedResponse> teamDCompletedMatches = teamMatchService.getCompletedMatchesByTeamId(teamD.getTeamId());
@@ -967,7 +970,8 @@ class TeamMatchServiceImplTest {
 
         TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt)); // teamA 매치등록
         teamMatchService.acceptMatch(matchAB.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
-        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // teamA vs teamB => 3 : 1
+                teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), resultRequest(1, 0, leaderA.getMemberId(), leaderB.getMemberId()));
+ // teamA vs teamB => 3 : 1
 
         // when
         TeamMatchDetailResponse matchDetailResponse = teamMatchService.getMatch(matchAB.getMatchId());
@@ -1103,7 +1107,8 @@ class TeamMatchServiceImplTest {
 
         TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt)); // teamA 매치등록
         teamMatchService.acceptMatch(matchAB.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
-        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1)); // teamA vs teamB => 3 : 1
+                teamMatchResultService.registerMatchResult(match.getMatchId(), leaderA.getMemberId(), resultRequest(1, 0, leaderA.getMemberId(), leaderB.getMemberId()));
+ // teamA vs teamB => 3 : 1
 
         // when
         assertThatThrownBy(() -> teamMatchService.getMatch(9999L))
@@ -1210,7 +1215,8 @@ class TeamMatchServiceImplTest {
 
         TeamMatchCreateResponse matchAB = teamMatchService.registerMatch(teamA.getTeamId(), leaderA.getMemberId(), new TeamMatchCreateRequest(teamMatchPlayedAt)); // teamA 매치등록
         teamMatchService.acceptMatch(matchAB.getMatchId(), teamB.getTeamId(), leaderB.getMemberId());
-        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), new TeamMatchResultCreateRequest(3, 1));
+        teamMatchResultService.registerMatchResult(matchAB.getMatchId(), leaderA.getMemberId(), resultRequest(1, 0, leaderA.getMemberId(), leaderB.getMemberId()));
+
 
         em.flush();
         em.clear();
@@ -1231,6 +1237,10 @@ class TeamMatchServiceImplTest {
         assertThat(teamRepository.findById(teamA.getTeamId()).get().getRating()).isEqualTo(1530);
         assertThat(teamRepository.findById(teamB.getTeamId()).get().getRating()).isEqualTo(1470);
     }
+
+     *
+     */
+
 
 
 

@@ -2,11 +2,14 @@ package io.github.qlrxn1152.footballv3.teammatch.service.impl;
 
 import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.validation.MemberValidator;
+import io.github.qlrxn1152.footballv3.team.domain.Team;
 import io.github.qlrxn1152.footballv3.team.validation.TeamValidator;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatch;
+import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchGoal;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchResult;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchResultCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchResultResponse;
+import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchGoalRepository;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchResultRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchResultService;
 import io.github.qlrxn1152.footballv3.teammatch.validation.TeamMatchResultValidator;
@@ -18,6 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchResultCreateRequest.*;
+
 @Service
 @Slf4j
 @Transactional
@@ -25,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TeamMatchResultServiceImpl implements TeamMatchResultService {
 
     private final TeamMatchResultRepository teamMatchResultRepository;
+    private final TeamMatchGoalRepository teamMatchGoalRepository;
 
     private final TeamValidator teamValidator;
     private final MemberValidator memberValidator;
@@ -51,11 +60,37 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         // 점수방식은 올바른 방식인지
         teamMatchResultValidator.validateMatchResultScore(request.getHomeScore(), request.getAwayScore());
 
-        teamMatch.completeMatch();
+        List<TeamMatchGoal> teamMatchGoals = getTeamMatchGoals(request, teamMatch);
+
+        teamMatchGoalRepository.saveAll(teamMatchGoals); // 득점자 정보들 저장
+        TeamMatchResult matchResult = teamMatchResultRepository.save(TeamMatchResult.createMatchResult(teamMatch, request.getHomeScore(), request.getAwayScore())); // 매치 결과 저장
         teamMatch.applyRating(request.getHomeScore(), request.getAwayScore()); // Rating 반영.
-        TeamMatchResult matchResult = teamMatchResultRepository.save(TeamMatchResult.createMatchResult(teamMatch, request.getHomeScore(), request.getAwayScore()));
+        teamMatch.completeMatch();
 
         return TeamMatchResultResponse.of(matchResult);
+    }
+
+    public List<TeamMatchGoal> getTeamMatchGoals(TeamMatchResultCreateRequest request, TeamMatch teamMatch) {
+
+        List<TeamMatchGoal> teamMatchGoals = new ArrayList<>();
+
+        request.getHomeScorers().forEach(homeScorer -> {
+            Member scorer = memberValidator.validateExistMemberAndReturn(homeScorer.getMemberId());
+
+            TeamMatchGoal teamMatchGoal = TeamMatchGoal.of(teamMatch, teamMatch.getHomeTeam(), scorer, homeScorer.getGoalCount());
+            scorer.addGoals(homeScorer.getGoalCount());
+            teamMatchGoals.add(teamMatchGoal);
+        });
+
+        request.getAwayScorers().forEach(awayScorer -> {
+            Member scorer = memberValidator.validateExistMemberAndReturn(awayScorer.getMemberId());
+
+            TeamMatchGoal teamMatchGoal = TeamMatchGoal.of(teamMatch, teamMatch.getHomeTeam(), scorer, awayScorer.getGoalCount());
+            scorer.addGoals(awayScorer.getGoalCount());
+            teamMatchGoals.add(teamMatchGoal);
+        });
+
+        return teamMatchGoals;
     }
 
 
