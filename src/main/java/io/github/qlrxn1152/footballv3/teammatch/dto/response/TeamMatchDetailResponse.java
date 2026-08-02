@@ -30,6 +30,8 @@ public class TeamMatchDetailResponse {
     private Integer homeScore;
     private Integer awayScore;
 
+
+
     private Long winnerTeamId;
     private String winnerTeamName;
 
