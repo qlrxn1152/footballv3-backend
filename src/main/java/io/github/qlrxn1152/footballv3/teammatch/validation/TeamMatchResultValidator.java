@@ -45,7 +45,7 @@ public class TeamMatchResultValidator {
         Integer matchAwayScore = request.getAwayScore();
 
         int requestHomeScore = request.getHomeScorers().stream().mapToInt(Scorer::getGoalCount).sum();
-        int requestAwayScore = request.getHomeScorers().stream().mapToInt(Scorer::getGoalCount).sum();
+        int requestAwayScore = request.getAwayScorers().stream().mapToInt(Scorer::getGoalCount).sum();
 
         if ((!matchHomeScore.equals(requestHomeScore) || (!matchAwayScore.equals(requestAwayScore)))) {
             throw new InvalidTeamMatchScoreException();
