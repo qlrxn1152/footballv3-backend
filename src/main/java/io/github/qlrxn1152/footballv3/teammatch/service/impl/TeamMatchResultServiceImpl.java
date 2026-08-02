@@ -64,12 +64,10 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         // 점수방식은 올바른 방식인지
         teamMatchResultValidator.validateMatchResultScore(request.getHomeScore(), request.getAwayScore());
 
-        // 득점 합계가 맞는지
-        if ((request.getHomeScore() != request.getHomeScorers().stream().mapToInt(Scorer::getGoalCount).sum()) || (request.getAwayScore() != request.getAwayScorers().stream().mapToInt(Scorer::getGoalCount).sum())) {
-            throw new InvalidTeamMatchScoreException();
-        }
+        teamMatchResultValidator.validateDuplicateScorers(request);
 
-        validateDuplicateScorers(request);
+        // 득점 합계가 맞는지
+        teamMatchResultValidator.validateTotalScore(request);
 
         List<TeamMatchGoal> teamMatchGoals = getTeamMatchGoals(request, teamMatch, teamMatch.getHomeTeam().getId(), teamMatch.getAwayTeam().getId());
 
@@ -81,6 +79,15 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         return TeamMatchResultResponse.of(matchResult);
     }
 
+
+
+
+
+
+
+
+
+    // ===== 비즈니스로직 ====== //
     public List<TeamMatchGoal> getTeamMatchGoals(TeamMatchResultCreateRequest request, TeamMatch teamMatch, Long homeTeamId, Long awayTeamId) {
 
         List<TeamMatchGoal> teamMatchGoals = new ArrayList<>();
@@ -109,18 +116,6 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         return teamMatchGoals;
     }
 
-    public void validateDuplicateScorers(TeamMatchResultCreateRequest request) {
-        List<Long> memberIds = new ArrayList<>();
-
-        request.getHomeScorers().forEach(scorer -> memberIds.add(scorer.getMemberId()));
-        request.getAwayScorers().forEach(scorer -> memberIds.add(scorer.getMemberId()));
-
-        Set<Long> uniqueMemberIds = new HashSet<>(memberIds);
-
-        if (memberIds.size() != uniqueMemberIds.size()) {
-            throw new DuplicateTeamMatchGoalScorerException();
-        }
-    }
 
 
 }
