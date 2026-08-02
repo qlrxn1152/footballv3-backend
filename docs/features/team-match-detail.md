@@ -12,6 +12,11 @@ GET /api/matches/{matchId}
 - 현재 팀 레이팅을 반환한다.
 - 매치 상태를 반환한다.
 - playedAt 을 반환한다.
+- COMPLETED 매치는 홈팀과 원정팀의 득점자 정보를 반환한다.
+- 각 득점자는 memberId, username, goalCount를 반환한다.
+- PENDING과 MATCHED는 득점자 목록을 빈 배열로 반환한다.
+- COMPLETED 0:0 경기도 득점자 목록을 빈 배열로 반환한다.
+- 날짜 정보는 playedAt만 반환한다.
 
 ## PENDING
 
