@@ -113,7 +113,6 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         List<Long> memberIds = new ArrayList<>();
 
         request.getHomeScorers().forEach(scorer -> memberIds.add(scorer.getMemberId()));
-
         request.getAwayScorers().forEach(scorer -> memberIds.add(scorer.getMemberId()));
 
         Set<Long> uniqueMemberIds = new HashSet<>(memberIds);
