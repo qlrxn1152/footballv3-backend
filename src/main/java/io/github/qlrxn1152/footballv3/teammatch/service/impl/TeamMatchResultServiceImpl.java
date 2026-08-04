@@ -52,7 +52,7 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         validateRegisterAuthority(teamMatch, loginMemberId);
         validateResultRequest(teamMatch, request);
 
-        List<TeamMatchGoal> teamMatchGoals = createGoals(request, teamMatch);
+        List<TeamMatchGoal> teamMatchGoals = createMatchGoals(teamMatch, request);
 
         teamMatchGoalRepository.saveAll(teamMatchGoals); // 득점자 정보들 저장
         TeamMatchResult matchResult = teamMatchResultRepository.save(TeamMatchResult.createMatchResult(teamMatch, request.getHomeScore(), request.getAwayScore())); // 매치 결과 저장
@@ -65,6 +65,7 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
 
     // ========== 검증로직 =========
     private void validateResultRequest(TeamMatch teamMatch, TeamMatchResultCreateRequest request) {
+        teamMatchValidator.validateMatchedStatus(teamMatch);
         teamMatchResultValidator.validateResultNotExists(teamMatch.getId());
         teamMatchResultValidator.validateMatchResultScore(request.getHomeScore(), request.getAwayScore());
         teamMatchResultValidator.validateDuplicateScorers(request);
@@ -75,41 +76,39 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         Member loginMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
         TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(loginMemberId);
 
-        teamMatchValidator.validateMatchedStatus(teamMatch);
         teamMemberValidator.validateBelongsToTeam(teamMatch.getHomeTeam().getId(), teamMember);
         teamValidator.validateCheckTeamLeader(teamMatch.getHomeTeam(), loginMember.getId());
     }
 
 
     // ===== 비즈니스로직 ====== //
-    private List<TeamMatchGoal> createGoals(TeamMatchResultCreateRequest request, TeamMatch teamMatch) {
+    private List<TeamMatchGoal> createMatchGoals(TeamMatch teamMatch, TeamMatchResultCreateRequest request) {
         List<TeamMatchGoal> teamGoals = new ArrayList<>();
 
         List<Scorer> homeScorers = request.getHomeScorers();
         List<Scorer> awayScorers = request.getAwayScorers();
 
-        teamGoals.addAll(createTeamGoals(teamMatch, homeScorers, teamMatch.getHomeTeam()));
-        teamGoals.addAll(createTeamGoals(teamMatch, awayScorers, teamMatch.getAwayTeam()));
+        teamGoals.addAll(createTeamGoals(teamMatch, teamMatch.getHomeTeam(), homeScorers));
+        teamGoals.addAll(createTeamGoals(teamMatch, teamMatch.getAwayTeam(), awayScorers));
 
         return teamGoals;
     }
 
 
-    private List<TeamMatchGoal> createTeamGoals(TeamMatch teamMatch, List<Scorer> scorers, Team team) {
+    private List<TeamMatchGoal> createTeamGoals(TeamMatch teamMatch, Team team, List<Scorer> scorers) {
+        return scorers.stream()
+                .map(scorerRequest -> createTeamGoal(teamMatch, team, scorerRequest))
+                .toList();
+    }
 
-        List<TeamMatchGoal> teamMatchGoals = new ArrayList<>();
+    private TeamMatchGoal createTeamGoal(TeamMatch teamMatch, Team team, Scorer scorerRequest) {
+        Member scorer = memberValidator.validateExistMemberAndReturn(scorerRequest.getMemberId());
+        TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(scorer.getId());
+        teamMemberValidator.validateBelongsToTeam(team.getId(), teamMember);
 
-        scorers.forEach(homeScorer -> {
-            Member scorer = memberValidator.validateExistMemberAndReturn(homeScorer.getMemberId());
-            TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(scorer.getId());
-            teamMemberValidator.validateBelongsToTeam(team.getId(), teamMember); //
+        scorer.addGoals(scorerRequest.getGoalCount());
 
-            TeamMatchGoal teamMatchGoal = TeamMatchGoal.of(teamMatch, team, scorer, homeScorer.getGoalCount());
-            scorer.addGoals(homeScorer.getGoalCount());
-            teamMatchGoals.add(teamMatchGoal);
-        });
-
-        return teamMatchGoals;
+        return TeamMatchGoal.of(teamMatch, team, scorer, scorerRequest.getGoalCount());
     }
 
 
