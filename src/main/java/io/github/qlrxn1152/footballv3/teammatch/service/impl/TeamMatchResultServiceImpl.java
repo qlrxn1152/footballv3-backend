@@ -48,68 +48,64 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
     @Override
     public TeamMatchResultResponse registerMatchResult(Long matchId, Long loginMemberId, TeamMatchResultCreateRequest request) {
         TeamMatch teamMatch = teamMatchValidator.validateExistTeamMatchAndReturnWithTeams(matchId); // 매치조회
-        Member loginMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
-        TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(loginMember.getId());
 
-        // 해당매치가 MATCHED 인 상태가 맞는지
-        teamMatchValidator.validateMatchedStatus(teamMatch);
+        validateRegisterAuthority(teamMatch, loginMemberId);
+        validateResultRequest(teamMatch, request);
 
-        // 홈팀인원이 맞는지, 팀장이 맞는지
-        teamMemberValidator.validateBelongsToTeam(teamMatch.getHomeTeam().getId(), teamMember);
-        teamValidator.validateCheckTeamLeader(teamMatch.getHomeTeam(), loginMember.getId());
-
-        // 이미 동일한 매치의 매치결과가 등록되어져 있는건 아닌지
-        teamMatchResultValidator.validateResultNotExists(teamMatch.getId());
-
-        // 점수방식은 올바른 방식인지
-        teamMatchResultValidator.validateMatchResultScore(request.getHomeScore(), request.getAwayScore());
-
-        teamMatchResultValidator.validateDuplicateScorers(request);
-
-        // 득점 합계가 맞는지
-        teamMatchResultValidator.validateTotalScore(request);
-
-        List<TeamMatchGoal> teamMatchGoals = getTeamMatchGoals(request, teamMatch, teamMatch.getHomeTeam().getId(), teamMatch.getAwayTeam().getId());
+        List<TeamMatchGoal> teamMatchGoals = createGoals(request, teamMatch);
 
         teamMatchGoalRepository.saveAll(teamMatchGoals); // 득점자 정보들 저장
         TeamMatchResult matchResult = teamMatchResultRepository.save(TeamMatchResult.createMatchResult(teamMatch, request.getHomeScore(), request.getAwayScore())); // 매치 결과 저장
-        teamMatch.applyRating(request.getHomeScore(), request.getAwayScore()); // Rating 반영.
-        teamMatch.completeMatch();
+        teamMatch.completeMatch(request.getHomeScore(), request.getAwayScore());
 
         return TeamMatchResultResponse.of(matchResult);
     }
 
 
 
+    // ========== 검증로직 =========
+    private void validateResultRequest(TeamMatch teamMatch, TeamMatchResultCreateRequest request) {
+        teamMatchResultValidator.validateResultNotExists(teamMatch.getId());
+        teamMatchResultValidator.validateMatchResultScore(request.getHomeScore(), request.getAwayScore());
+        teamMatchResultValidator.validateDuplicateScorers(request);
+        teamMatchResultValidator.validateTotalScore(request);
+    }
 
+    private void validateRegisterAuthority(TeamMatch teamMatch, Long loginMemberId) {
+        Member loginMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
+        TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(loginMemberId);
 
-
-
+        teamMatchValidator.validateMatchedStatus(teamMatch);
+        teamMemberValidator.validateBelongsToTeam(teamMatch.getHomeTeam().getId(), teamMember);
+        teamValidator.validateCheckTeamLeader(teamMatch.getHomeTeam(), loginMember.getId());
+    }
 
 
     // ===== 비즈니스로직 ====== //
-    public List<TeamMatchGoal> getTeamMatchGoals(TeamMatchResultCreateRequest request, TeamMatch teamMatch, Long homeTeamId, Long awayTeamId) {
+    private List<TeamMatchGoal> createGoals(TeamMatchResultCreateRequest request, TeamMatch teamMatch) {
+        List<TeamMatchGoal> teamGoals = new ArrayList<>();
+
+        List<Scorer> homeScorers = request.getHomeScorers();
+        List<Scorer> awayScorers = request.getAwayScorers();
+
+        teamGoals.addAll(createTeamGoals(teamMatch, homeScorers, teamMatch.getHomeTeam()));
+        teamGoals.addAll(createTeamGoals(teamMatch, awayScorers, teamMatch.getAwayTeam()));
+
+        return teamGoals;
+    }
+
+
+    private List<TeamMatchGoal> createTeamGoals(TeamMatch teamMatch, List<Scorer> scorers, Team team) {
 
         List<TeamMatchGoal> teamMatchGoals = new ArrayList<>();
 
-        request.getHomeScorers().forEach(homeScorer -> {
+        scorers.forEach(homeScorer -> {
             Member scorer = memberValidator.validateExistMemberAndReturn(homeScorer.getMemberId());
             TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(scorer.getId());
-            teamMemberValidator.validateBelongsToTeam(homeTeamId, teamMember);
+            teamMemberValidator.validateBelongsToTeam(team.getId(), teamMember); //
 
-
-            TeamMatchGoal teamMatchGoal = TeamMatchGoal.of(teamMatch, teamMatch.getHomeTeam(), scorer, homeScorer.getGoalCount());
+            TeamMatchGoal teamMatchGoal = TeamMatchGoal.of(teamMatch, team, scorer, homeScorer.getGoalCount());
             scorer.addGoals(homeScorer.getGoalCount());
-            teamMatchGoals.add(teamMatchGoal);
-        });
-
-        request.getAwayScorers().forEach(awayScorer -> {
-            Member scorer = memberValidator.validateExistMemberAndReturn(awayScorer.getMemberId());
-            TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(scorer.getId());
-            teamMemberValidator.validateBelongsToTeam(awayTeamId, teamMember);
-
-            TeamMatchGoal teamMatchGoal = TeamMatchGoal.of(teamMatch, teamMatch.getAwayTeam(), scorer, awayScorer.getGoalCount());
-            scorer.addGoals(awayScorer.getGoalCount());
             teamMatchGoals.add(teamMatchGoal);
         });
 

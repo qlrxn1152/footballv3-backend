@@ -64,9 +64,10 @@ public class TeamMatch {
         this.matchedAt = LocalDateTime.now();
     }
 
-    public void completeMatch() {
+    public void completeMatch(int homeScore, int awayScore) {
         this.status = TeamMatchStatus.COMPLETED;
         this.completedAt = LocalDateTime.now();
+        applyRating(homeScore, awayScore);
     }
 
     public void applyRating(int homeScore, int awayScore) {
