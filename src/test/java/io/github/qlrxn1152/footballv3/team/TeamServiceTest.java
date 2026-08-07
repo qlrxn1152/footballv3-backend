@@ -133,7 +133,7 @@ public class TeamServiceTest {
     }
 
     @Nested
-    class findTeams {
+    class FindTeams {
 
         @Test
         @DisplayName(value = "만들어져 있는 팀들을 최신에 만들어진 팀 순서로 확인할 수 있다.")
@@ -167,7 +167,7 @@ public class TeamServiceTest {
     }
 
     @Nested
-    class getTheTeam {
+    class GetTheTeam {
 
         @Autowired private EntityManager em;
         @Autowired private EntityManagerFactory emf;
