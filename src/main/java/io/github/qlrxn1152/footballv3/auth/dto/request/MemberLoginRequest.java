@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class LoginRequest {
+public class MemberLoginRequest {
 
     @NotBlank(message = "아이디를 입력하세요.")
     @Size(min = 4, max = 12, message = "아이디 또는 비밀번호를 확인하세요.")
@@ -20,8 +20,8 @@ public class LoginRequest {
     @Size(min = 4, max = 15, message = "아이디 또는 비밀번호를 확인하세요.")
     private String password;
 
-    public static LoginRequest of(String username, String password) {
-        return new LoginRequest(username, password);
+    public static MemberLoginRequest of(String username, String password) {
+        return new MemberLoginRequest(username, password);
     }
 
 }

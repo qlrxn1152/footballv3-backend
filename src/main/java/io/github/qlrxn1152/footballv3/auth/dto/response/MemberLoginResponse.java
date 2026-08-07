@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class LoginResponse {
+public class MemberLoginResponse {
 
     private static final String TOKEN_TYPE = "Bearer";
 
@@ -23,8 +23,8 @@ public class LoginResponse {
     private String tokenType;
     private long expiresIn;
 
-    public static LoginResponse of(Member member, AccessToken accessToken) {
-        return new LoginResponse(
+    public static MemberLoginResponse of(Member member, AccessToken accessToken) {
+        return new MemberLoginResponse(
                 member.getId(),
                 member.getUsername(),
                 member.getRole(),

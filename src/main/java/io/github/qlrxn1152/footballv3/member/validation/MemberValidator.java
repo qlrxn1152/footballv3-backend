@@ -2,6 +2,7 @@ package io.github.qlrxn1152.footballv3.member.validation;
 
 import io.github.qlrxn1152.footballv3.member.domain.Member;
 import io.github.qlrxn1152.footballv3.member.exception.exceptions.DuplicateUsernameException;
+import io.github.qlrxn1152.footballv3.member.exception.exceptions.InvalidUsernameException;
 import io.github.qlrxn1152.footballv3.member.exception.exceptions.NotFoundMemberException;
 import io.github.qlrxn1152.footballv3.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,13 @@ public class MemberValidator {
     public Member validateExistMemberAndReturn(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(NotFoundMemberException::new);
+    }
+
+    public void validateUsernameContainStrip(String username) {
+        if (!username.strip().equals(username)) {
+            throw new InvalidUsernameException();
+
+        }
     }
 
 

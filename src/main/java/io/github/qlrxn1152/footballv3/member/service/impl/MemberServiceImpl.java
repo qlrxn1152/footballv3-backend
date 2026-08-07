@@ -27,12 +27,12 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     public MemberCreateResponse signup(MemberCreateRequest request) {
-        String normalizedUsername = request.getUsername().toLowerCase().strip();
+        memberValidator.validateDuplicateUsername(request.getUsername());
+        memberValidator.validateUsernameContainStrip(request.getUsername());
 
-        memberValidator.validateDuplicateUsername(normalizedUsername);
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-        Member savedMember = memberRepository.save(Member.signup(normalizedUsername, encodedPassword));
+        Member savedMember = memberRepository.save(Member.signup(request.getUsername(), encodedPassword));
         return MemberCreateResponse.of(savedMember);
     }
 

@@ -80,7 +80,7 @@ class TeamMatchResultServiceImplTest {
     }
 
     private TeamCreateResponse createTeam(String teamName, Long memberId) {
-        return teamService.createTeam(new TeamCreateRequest(teamName), memberId);
+        return teamService.createTeam(TeamCreateRequest.of(teamName), memberId);
     }
 
     private TeamMatchCreateResponse registerPendingMatch(Long homeTeamId, Long loginMemberId, LocalDateTime playedAt) {

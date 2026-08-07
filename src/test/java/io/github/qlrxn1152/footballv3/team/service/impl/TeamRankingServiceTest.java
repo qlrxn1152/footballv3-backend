@@ -51,7 +51,7 @@ class TeamRankingServiceImplTest {
     }
 
     private TeamCreateResponse createTeam(String teamName, Long leaderId) {
-        return teamService.createTeam(new TeamCreateRequest(teamName), leaderId);
+        return teamService.createTeam(TeamCreateRequest.of(teamName), leaderId);
     }
 
     private TeamMatchCreateResponse createMatchedMatch(

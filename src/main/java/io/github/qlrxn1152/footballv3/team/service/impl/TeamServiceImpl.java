@@ -45,11 +45,11 @@ public class TeamServiceImpl implements TeamService {
     @Override
     public TeamCreateResponse createTeam(TeamCreateRequest request, Long memberId) {
         String normalizedTeamName = request.getTeamName().strip();
+        teamMemberValidator.validateAlreadyJoinedTeam(memberId);
 
         teamValidator.validateExistsTeamName(normalizedTeamName);
         teamValidator.validateTeamNameLength(normalizedTeamName);
         Member member = memberValidator.validateExistMemberAndReturn(memberId);
-        teamMemberValidator.validateAlreadyJoinedTeam(memberId);
 
         Team savedTeam = teamRepository.save(Team.createTeam(normalizedTeamName, member));
         TeamMember savedTeamMember = teamMemberRepository.save(TeamMember.createTeam(savedTeam, member));
@@ -69,9 +69,9 @@ public class TeamServiceImpl implements TeamService {
     @Override
     @Transactional(readOnly = true)
     public TeamDetailResponse getTeam(Long teamId) {
-        Team team = teamValidator.validateExistTeamAndReturnWithLeaderMember(teamId);
+        Team team = teamValidator.validateExistTeamAndReturnWithLeaderMember(teamId); // 1
 
-        List<TeamMemberResponse> members = teamMemberRepository.findAllByTeamIdWithMember(teamId)
+        List<TeamMemberResponse> members = teamMemberRepository.findAllByTeamIdWithMember(teamId) // 2
                 .stream()
                 .map(TeamMemberResponse::of)
                 .toList();

@@ -61,25 +61,6 @@ class TeamServiceImplTest {
     @Autowired private EntityManagerFactory emf;
     @Autowired private EntityManager em;
 
-//    @BeforeEach
-    void setUp() {
-        for (int i = 1; i <= 100; i++) {
-            MemberCreateResponse member =
-                    memberService.signup(
-                            new MemberCreateRequest(
-                                    "user" + i,
-                                    "1234"
-                            )
-                    );
-
-            teamService.createTeam(
-                    new TeamCreateRequest(
-                            "team" + i
-                    ),
-                    member.getMemberId()
-            );
-        }
-    }
 
     @Test
     @DisplayName(value = "팀 생성")
@@ -88,7 +69,7 @@ class TeamServiceImplTest {
         MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
 
         // when
-        TeamCreateResponse teamResponse = teamService.createTeam(new TeamCreateRequest("teamA"), memberResponse.getMemberId());
+        TeamCreateResponse teamResponse = teamService.createTeam(TeamCreateRequest.of("teamA"), memberResponse.getMemberId());
         Team savedTeam = teamRepository.findById(teamResponse.getTeamId()).get();
         TeamMember savedTeamMember = teamMemberRepository.findByMemberId(memberResponse.getMemberId()).get();
 
@@ -111,7 +92,7 @@ class TeamServiceImplTest {
         MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
 
         // when
-        TeamCreateResponse teamResponse = teamService.createTeam(new TeamCreateRequest("   teamA   "), memberResponse.getMemberId());
+        TeamCreateResponse teamResponse = teamService.createTeam(TeamCreateRequest.of("   teamA   "), memberResponse.getMemberId());
         Team savedTeam = teamRepository.findById(teamResponse.getTeamId()).get();
         TeamMember savedTeamMember = teamMemberRepository.findByMemberId(memberResponse.getMemberId()).get();
 
@@ -133,10 +114,10 @@ class TeamServiceImplTest {
     void createTeam_fail_alreadyJoinTeam() throws Exception {
         // given
         MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
-        teamService.createTeam(new TeamCreateRequest("teamA"), memberResponse.getMemberId());
+        teamService.createTeam(TeamCreateRequest.of("teamA"), memberResponse.getMemberId());
 
         // when && then
-        assertThatThrownBy(() -> teamService.createTeam(new TeamCreateRequest("teamB"), memberResponse.getMemberId()))
+        assertThatThrownBy(() -> teamService.createTeam(TeamCreateRequest.of("teamB"), memberResponse.getMemberId()))
                 .isInstanceOf(AlreadyJoinedTeamException.class)
                 .hasMessage("이미 팀에 속한 회원입니다.");
     }
@@ -147,10 +128,10 @@ class TeamServiceImplTest {
         // given
         MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
         MemberCreateResponse memberResponseB = memberService.signup(new MemberCreateRequest("userB", "1234"));
-        teamService.createTeam(new TeamCreateRequest("teamA"), memberResponse.getMemberId());
+        teamService.createTeam(TeamCreateRequest.of("teamA"), memberResponse.getMemberId());
 
         // when && then
-        assertThatThrownBy(() -> teamService.createTeam(new TeamCreateRequest("teamA"), memberResponseB.getMemberId()))
+        assertThatThrownBy(() -> teamService.createTeam(TeamCreateRequest.of("teamA"), memberResponseB.getMemberId()))
                 .isInstanceOf(DuplicateTeamNameException.class)
                 .hasMessage("팀 이름 중복");
     }
@@ -162,7 +143,7 @@ class TeamServiceImplTest {
         MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
 
         // when && then
-        assertThatThrownBy(() -> teamService.createTeam(new TeamCreateRequest("a"), memberResponse.getMemberId()))
+        assertThatThrownBy(() -> teamService.createTeam(TeamCreateRequest.of("a"), memberResponse.getMemberId()))
                 .isInstanceOf(TeamNameLengthException.class)
                 .hasMessage("팀 이름은 2~10글자까지만 가능합니다.");
     }
@@ -174,7 +155,7 @@ class TeamServiceImplTest {
         MemberCreateResponse memberResponse = memberService.signup(new MemberCreateRequest("userA", "1234"));
 
         // when && then
-        assertThatThrownBy(() -> teamService.createTeam(new TeamCreateRequest("aasdfasgdasdrfasdg"), memberResponse.getMemberId()))
+        assertThatThrownBy(() -> teamService.createTeam(TeamCreateRequest.of("aasdfasgdasdrfasdg"), memberResponse.getMemberId()))
                 .isInstanceOf(TeamNameLengthException.class)
                 .hasMessage("팀 이름은 2~10글자까지만 가능합니다.");
     }
@@ -185,8 +166,8 @@ class TeamServiceImplTest {
         // given
         MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("userA", "1234"));
         MemberCreateResponse memberB = memberService.signup(new MemberCreateRequest("userB", "1234"));
-        teamService.createTeam(new TeamCreateRequest("teamA"), memberA.getMemberId());
-        teamService.createTeam(new TeamCreateRequest("teamB"), memberB.getMemberId());
+        teamService.createTeam(TeamCreateRequest.of("teamA"), memberA.getMemberId());
+        teamService.createTeam(TeamCreateRequest.of("teamB"), memberB.getMemberId());
 
         // when
         List<TeamListResponse> response = teamService.getTeams();
@@ -211,7 +192,7 @@ class TeamServiceImplTest {
     void getTeam() throws Exception {
         // given
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("userA", "1234"));
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
 
         // when
         TeamDetailResponse response = teamService.getTeam(team.getTeamId());
@@ -231,7 +212,7 @@ class TeamServiceImplTest {
         // given
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("userA", "1234"));
         MemberCreateResponse member = memberService.signup(new MemberCreateRequest("userB", "1234"));
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
 
         // when
 
@@ -265,7 +246,7 @@ class TeamServiceImplTest {
     @DisplayName(value = "팀 상세 조회 쿼리 수 체크")
     void getTeam_check_query_count() throws Exception {
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("userA", "1234"));
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
         em.flush();
         em.clear();
 
@@ -291,6 +272,9 @@ class TeamServiceImplTest {
         assertThat(queryCount).isEqualTo(2);
     }
 
+
+
+
     @Test
     @DisplayName(value = "팀장 변경")
     void transferTeamLeader() throws Exception {
@@ -298,7 +282,7 @@ class TeamServiceImplTest {
         MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
         MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), oldLeaderMember.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeaderMember.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeaderMember.getMemberId(), joinRequest.getRequestId());
 
@@ -322,7 +306,7 @@ class TeamServiceImplTest {
         MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
         MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), oldLeaderMember.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeaderMember.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeaderMember.getMemberId(), joinRequest.getRequestId());
 
@@ -339,7 +323,7 @@ class TeamServiceImplTest {
         MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
         MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), oldLeaderMember.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeaderMember.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeaderMember.getMemberId(), joinRequest.getRequestId());
 
@@ -356,7 +340,7 @@ class TeamServiceImplTest {
         MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
         MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), oldLeaderMember.getMemberId());
 
         // when && then
         assertThatThrownBy(() -> teamService.transferTeamLeader(team.getTeamId(), oldLeaderMember.getMemberId(), newLeaderMember.getMemberId()))
@@ -371,8 +355,8 @@ class TeamServiceImplTest {
         MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
         MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
-        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), newLeaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), oldLeaderMember.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(TeamCreateRequest.of("teamB"), newLeaderMember.getMemberId());
 
         // when && then
         assertThatThrownBy(() -> teamService.transferTeamLeader(team.getTeamId(), oldLeaderMember.getMemberId(), newLeaderMember.getMemberId()))
@@ -387,7 +371,7 @@ class TeamServiceImplTest {
         MemberCreateResponse oldLeaderMember = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
         MemberCreateResponse newLeaderMember = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), oldLeaderMember.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeaderMember.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeaderMember.getMemberId(), joinRequest.getRequestId());
 
@@ -402,6 +386,14 @@ class TeamServiceImplTest {
                 .hasMessage("팀장이 아닙니다.");
     }
 
+
+
+
+
+
+
+
+
     @Test
     @DisplayName(value = "팀 인원이 1명뿐인 팀장은 해당팀을 해체할 수 있다.")
     void disbandTeam() throws Exception {
@@ -409,7 +401,7 @@ class TeamServiceImplTest {
         MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
         MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leaderMember.getMemberId());
         teamJoinRequestService.createJoinRequest(team.getTeamId(), memberA.getMemberId());
 
         // when
@@ -429,7 +421,7 @@ class TeamServiceImplTest {
         MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
         MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leaderMember.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), memberA.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), leaderMember.getMemberId(), joinRequest.getRequestId());
 
@@ -449,7 +441,7 @@ class TeamServiceImplTest {
         MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
         MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leaderMember.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), memberA.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), leaderMember.getMemberId(), joinRequest.getRequestId());
 
@@ -466,7 +458,7 @@ class TeamServiceImplTest {
         MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
         MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leaderMember.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), memberA.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), leaderMember.getMemberId(), joinRequest.getRequestId());
 
@@ -483,8 +475,8 @@ class TeamServiceImplTest {
         MemberCreateResponse leaderMember = memberService.signup(new MemberCreateRequest("leaderMember", "1234"));
         MemberCreateResponse memberA = memberService.signup(new MemberCreateRequest("memberA", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leaderMember.getMemberId());
-        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), memberA.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leaderMember.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(TeamCreateRequest.of("teamB"), memberA.getMemberId());
 
         // when
         teamService.disbandTeam(team.getTeamId(), leaderMember.getMemberId()); // team -> 삭제
@@ -506,7 +498,7 @@ class TeamServiceImplTest {
         MemberCreateResponse oldLeader = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
         MemberCreateResponse newLeader = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), oldLeader.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeader.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeader.getMemberId(), joinRequest.getRequestId());
         teamService.transferTeamLeader(team.getTeamId(), oldLeader.getMemberId(), newLeader.getMemberId());
@@ -529,7 +521,7 @@ class TeamServiceImplTest {
         MemberCreateResponse oldLeader = memberService.signup(new MemberCreateRequest("oldLeader", "1234"));
         MemberCreateResponse newLeader = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), oldLeader.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeader.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeader.getMemberId(), joinRequest.getRequestId());
         teamService.transferTeamLeader(team.getTeamId(), oldLeader.getMemberId(), newLeader.getMemberId());
@@ -537,7 +529,7 @@ class TeamServiceImplTest {
         teamService.disbandTeam(team.getTeamId(), newLeader.getMemberId());
 
         // when && then
-        assertThatCode(() -> teamService.createTeam(new TeamCreateRequest("teamB"), newLeader.getMemberId())).doesNotThrowAnyException();
+        assertThatCode(() -> teamService.createTeam(TeamCreateRequest.of("teamB"), newLeader.getMemberId())).doesNotThrowAnyException();
     }
 
     @Test
@@ -548,13 +540,13 @@ class TeamServiceImplTest {
         MemberCreateResponse newLeader = memberService.signup(new MemberCreateRequest("newLeader", "1234"));
         MemberCreateResponse memberB = memberService.signup(new MemberCreateRequest("memberB", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), oldLeader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), oldLeader.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), newLeader.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), oldLeader.getMemberId(), joinRequest.getRequestId());
         teamService.transferTeamLeader(team.getTeamId(), oldLeader.getMemberId(), newLeader.getMemberId());
         teamMemberService.leaveTeam(team.getTeamId(), oldLeader.getMemberId());
         teamService.disbandTeam(team.getTeamId(), newLeader.getMemberId());
-        TeamCreateResponse teamB = teamService.createTeam(new TeamCreateRequest("teamB"), newLeader.getMemberId());
+        TeamCreateResponse teamB = teamService.createTeam(TeamCreateRequest.of("teamB"), newLeader.getMemberId());
 
         // when && then
         assertThatCode(() -> teamJoinRequestService.createJoinRequest(teamB.getTeamId(), memberB.getMemberId())).doesNotThrowAnyException();
@@ -566,7 +558,7 @@ class TeamServiceImplTest {
     void changeTeamName() throws Exception {
         // given
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
 
         // when
         TeamNameChangeResponse response = teamService.changeTeamName(team.getTeamId(), leader.getMemberId(), new TeamNameChangeRequest("teamB"));
@@ -582,7 +574,7 @@ class TeamServiceImplTest {
     void changeTeamName_strip() throws Exception {
         // given
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
 
         // when
         TeamNameChangeResponse response = teamService.changeTeamName(team.getTeamId(), leader.getMemberId(), new TeamNameChangeRequest("    teamB  "));
@@ -599,7 +591,7 @@ class TeamServiceImplTest {
         // given
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
         MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), member.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), leader.getMemberId(), joinRequest.getRequestId());
 
@@ -616,7 +608,7 @@ class TeamServiceImplTest {
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
         MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
 
         // when && then
         assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), member.getMemberId(), new TeamNameChangeRequest("teamB")))
@@ -631,8 +623,8 @@ class TeamServiceImplTest {
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
         MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
-        teamService.createTeam(new TeamCreateRequest("teamB"), member.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
+        teamService.createTeam(TeamCreateRequest.of("teamB"), member.getMemberId());
 
         // when && then
         assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), member.getMemberId(), new TeamNameChangeRequest("teamB")))
@@ -646,7 +638,7 @@ class TeamServiceImplTest {
         // given
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
 
         // when && then
         assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), leader.getMemberId(), new TeamNameChangeRequest("teamA")))
@@ -661,8 +653,8 @@ class TeamServiceImplTest {
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
         MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
-        teamService.createTeam(new TeamCreateRequest("teamB"), member.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
+        teamService.createTeam(TeamCreateRequest.of("teamB"), member.getMemberId());
 
         // when && then
         assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), leader.getMemberId(), new TeamNameChangeRequest("teamB")))
@@ -675,7 +667,7 @@ class TeamServiceImplTest {
     void changeTeamName_fail_notFoundTeam() throws Exception {
         // given
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
 
         // when && then
         assertThatThrownBy(() -> teamService.changeTeamName(1234L, leader.getMemberId(), new TeamNameChangeRequest("teamB")))
@@ -688,7 +680,7 @@ class TeamServiceImplTest {
     void changeTeamName_fail_notFoundMember() throws Exception {
         // given
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
 
         // when && then
         assertThatThrownBy(() -> teamService.changeTeamName(team.getTeamId(), 999L, new TeamNameChangeRequest("teamB")))
@@ -703,7 +695,7 @@ class TeamServiceImplTest {
         MemberCreateResponse leader = memberService.signup(new MemberCreateRequest("leader", "1234"));
         MemberCreateResponse member = memberService.signup(new MemberCreateRequest("member", "1234"));
 
-        TeamCreateResponse team = teamService.createTeam(new TeamCreateRequest("teamA"), leader.getMemberId());
+        TeamCreateResponse team = teamService.createTeam(TeamCreateRequest.of("teamA"), leader.getMemberId());
         TeamJoinRequestResponse joinRequest = teamJoinRequestService.createJoinRequest(team.getTeamId(), member.getMemberId());
         teamJoinRequestService.approveJoinRequest(team.getTeamId(), leader.getMemberId(), joinRequest.getRequestId());
         teamService.transferTeamLeader(team.getTeamId(), leader.getMemberId(), member.getMemberId());
