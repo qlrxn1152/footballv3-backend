@@ -9,8 +9,6 @@ import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchGoal;
 import io.github.qlrxn1152.footballv3.teammatch.domain.TeamMatchResult;
 import io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchResultCreateRequest;
 import io.github.qlrxn1152.footballv3.teammatch.dto.response.TeamMatchResultResponse;
-import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.DuplicateTeamMatchGoalScorerException;
-import io.github.qlrxn1152.footballv3.teammatch.exception.exceptions.InvalidTeamMatchScoreException;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchGoalRepository;
 import io.github.qlrxn1152.footballv3.teammatch.repository.TeamMatchResultRepository;
 import io.github.qlrxn1152.footballv3.teammatch.service.TeamMatchResultService;
@@ -20,13 +18,12 @@ import io.github.qlrxn1152.footballv3.teammember.domain.TeamMember;
 import io.github.qlrxn1152.footballv3.teammember.validation.TeamMemberValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static io.github.qlrxn1152.footballv3.teammatch.dto.request.TeamMatchResultCreateRequest.*;
 
@@ -49,22 +46,44 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
     public TeamMatchResultResponse registerMatchResult(Long matchId, Long loginMemberId, TeamMatchResultCreateRequest request) {
         TeamMatch teamMatch = teamMatchValidator.validateExistTeamMatchAndReturnWithTeams(matchId); // 매치조회
 
-        validateRegisterAuthority(teamMatch, loginMemberId);
-        validateResultRequest(teamMatch, request);
+        validateAuthorize(loginMemberId, teamMatch);
+        validateCanRegisterMatchResult(request, teamMatch);
 
-        List<TeamMatchGoal> teamMatchGoals = createMatchGoals(teamMatch, request);
-
-        teamMatchGoalRepository.saveAll(teamMatchGoals); // 득점자 정보들 저장
-        TeamMatchResult matchResult = teamMatchResultRepository.save(TeamMatchResult.createMatchResult(teamMatch, request.getHomeScore(), request.getAwayScore())); // 매치 결과 저장
-        teamMatch.completeMatch(request.getHomeScore(), request.getAwayScore());
+        createGoalsAndMatchGoalsSave(request, teamMatch);
+        TeamMatchResult matchResult = registerMatchResultAndComplete(request, teamMatch);
 
         return TeamMatchResultResponse.of(matchResult);
     }
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // ========== 검증로직 =========
-    private void validateResultRequest(TeamMatch teamMatch, TeamMatchResultCreateRequest request) {
+
+    private void validateAuthorize(Long loginMemberId, TeamMatch teamMatch) {
+        Member loginMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
+        TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(loginMemberId);
+        teamMemberValidator.validateBelongsToTeam(teamMatch.getHomeTeam().getId(), teamMember);
+        teamValidator.validateCheckTeamLeader(teamMatch.getHomeTeam(), loginMember.getId());
+    }
+
+    private void validateCanRegisterMatchResult(TeamMatchResultCreateRequest request, TeamMatch teamMatch) {
         teamMatchValidator.validateMatchedStatus(teamMatch);
         teamMatchResultValidator.validateResultNotExists(teamMatch.getId());
         teamMatchResultValidator.validateMatchResultScore(request.getHomeScore(), request.getAwayScore());
@@ -72,45 +91,32 @@ public class TeamMatchResultServiceImpl implements TeamMatchResultService {
         teamMatchResultValidator.validateTotalScore(request);
     }
 
-    private void validateRegisterAuthority(TeamMatch teamMatch, Long loginMemberId) {
-        Member loginMember = memberValidator.validateExistMemberAndReturn(loginMemberId);
-        TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(loginMemberId);
-
-        teamMemberValidator.validateBelongsToTeam(teamMatch.getHomeTeam().getId(), teamMember);
-        teamValidator.validateCheckTeamLeader(teamMatch.getHomeTeam(), loginMember.getId());
-    }
-
-
     // ===== 비즈니스로직 ====== //
-    private List<TeamMatchGoal> createMatchGoals(TeamMatch teamMatch, TeamMatchResultCreateRequest request) {
-        List<TeamMatchGoal> teamGoals = new ArrayList<>();
 
-        List<Scorer> homeScorers = request.getHomeScorers();
-        List<Scorer> awayScorers = request.getAwayScorers();
+    private void createGoalsAndMatchGoalsSave(TeamMatchResultCreateRequest request, TeamMatch teamMatch) {
+        List<TeamMatchGoal> teamMatchGoals = new ArrayList<>();
 
-        teamGoals.addAll(createTeamGoals(teamMatch, teamMatch.getHomeTeam(), homeScorers));
-        teamGoals.addAll(createTeamGoals(teamMatch, teamMatch.getAwayTeam(), awayScorers));
+        createGoals(request.getHomeScorers(), teamMatchGoals, teamMatch, teamMatch.getHomeTeam());
+        createGoals(request.getAwayScorers(), teamMatchGoals, teamMatch, teamMatch.getAwayTeam());
 
-        return teamGoals;
+        teamMatchGoalRepository.saveAll(teamMatchGoals); // 득점자 정보들 저장 --> 해당 매치의 득점자들에 대한 정보 ( 어떤매치에, 어느팀, 누가, 몇골 )
     }
 
-
-    private List<TeamMatchGoal> createTeamGoals(TeamMatch teamMatch, Team team, List<Scorer> scorers) {
-        return scorers.stream()
-                .map(scorerRequest -> createTeamGoal(teamMatch, team, scorerRequest))
-                .toList();
+    private void createGoals(List<Scorer> scorers, List<TeamMatchGoal> teamMatchGoals, TeamMatch teamMatch, Team team) {
+        scorers.forEach(scorer -> createGoal(scorer, teamMatchGoals, teamMatch, team));
     }
 
-    private TeamMatchGoal createTeamGoal(TeamMatch teamMatch, Team team, Scorer scorerRequest) {
-        Member scorer = memberValidator.validateExistMemberAndReturn(scorerRequest.getMemberId());
-        TeamMember teamMember = teamMemberValidator.validateExistTeamMemberAndReturn(scorer.getId());
-        teamMemberValidator.validateBelongsToTeam(team.getId(), teamMember);
-
-        scorer.addGoals(scorerRequest.getGoalCount());
-
-        return TeamMatchGoal.of(teamMatch, team, scorer, scorerRequest.getGoalCount());
+    private void createGoal(Scorer scorer, List<TeamMatchGoal> teamMatchGoals, TeamMatch teamMatch, Team teamMatch1) {
+        Member member = memberValidator.validateExistMemberAndReturn(scorer.getMemberId());
+        member.addGoals(scorer.getGoalCount());
+        teamMatchGoals.add(TeamMatchGoal.of(teamMatch, teamMatch1, member, scorer.getGoalCount()));
     }
 
+    private @NonNull TeamMatchResult registerMatchResultAndComplete(TeamMatchResultCreateRequest request, TeamMatch teamMatch) {
+        TeamMatchResult matchResult = teamMatchResultRepository.save(TeamMatchResult.createMatchResult(teamMatch, request.getHomeScore(), request.getAwayScore())); // 매치 결과 저장
+        teamMatch.completeMatch(request.getHomeScore(), request.getAwayScore());
+        return matchResult;
+    }
 
 
 }
