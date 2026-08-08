@@ -16,4 +16,6 @@ public class TeamNameChangeRequest {
     @Size(min = 2, max = 10, message = "팀 이름은 2~10 글자까지만 가능합니다.")
     private String newTeamName;
 
+
+
 }
